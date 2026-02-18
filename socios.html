@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control Venecia</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #0d0d0d; color: #e0e0e0; margin: 0; padding: 10px; }
+        .container { max-width: 600px; margin: auto; background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #333; }
+        h2 { text-align: center; color: #d4af37; text-transform: uppercase; font-size: 1em; margin: 25px 0 10px 0; border-bottom: 1px solid #d4af37; padding-bottom: 5px; }
+        .input-group { background: #222; padding: 10px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #d4af37; }
+        label { display: block; font-size: 0.75em; color: #888; margin-bottom: 5px; text-transform: uppercase; }
+        input, select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #333; background: #111; color: white; box-sizing: border-box; font-size: 1em; }
+        
+        .tabla-resumen { width: 100%; border-collapse: collapse; font-size: 0.8em; margin-top: 10px; background: #111; }
+        .tabla-resumen th { background: #d4af37; color: black; padding: 8px; border: 1px solid #333; }
+        .tabla-resumen td { padding: 8px; border: 1px solid #333; text-align: center; }
+        
+        .totales-box { background: #222; padding: 10px; border-radius: 8px; border: 1px solid #d4af37; margin-top: 10px; }
+        .total-row { display: flex; justify-content: space-between; font-size: 0.85em; padding: 5px 0; border-bottom: 1px solid #333; }
+        
+        .card-mozo { background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #444; }
+        .nombre-mozo { color: #d4af37; font-weight: bold; font-size: 1em; text-transform: uppercase; display: flex; justify-content: space-between; }
+        .stats-mozo { display: flex; justify-content: space-around; margin-top: 8px; }
+        .stat-item { text-align: center; }
+        .stat-val { display: block; font-size: 1.1em; color: white; font-weight: bold; }
+        .stat-lab { font-size: 0.65em; color: #888; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 style="text-align:center; color:#d4af37; font-size:1.3em; margin-bottom:20px;">PANEL DE CONTROL VENECIA</h1>
+    
+    <div class="input-group">
+        <label>Ver Movimiento del Día:</label>
+        <input type="date" id="filtro" onchange="cargarTodo()">
+    </div>
+
+    <h2>Botellas Entregadas (Hoy)</h2>
+    <table class="tabla-resumen">
+        <thead>
+            <tr><th>CANT</th><th>MOZO / CLIENTE</th><th>PRODUCTO</th></tr>
+        </thead>
+        <tbody id="tabla-botellas"></tbody>
+    </table>
+
+    <h2>Cortesías Entregadas (Hoy)</h2>
+    <table class="tabla-resumen">
+        <thead>
+            <tr><th>CANT</th><th>ASIGNADO A</th><th>PRODUCTO</th></tr>
+        </thead>
+        <tbody id="tabla-cortesias"></tbody>
+    </table>
+
+    <h2 style="background:#d4af37; color:black; padding:5px; margin-top:40px;">Ranking Mensual de Mozos</h2>
+    <div class="input-group">
+        <label>Seleccionar Mes del Ranking:</label>
+        <input type="month" id="filtroMes" onchange="cargarBalanceMensual()">
+    </div>
+    <div id="ranking-mozos"></div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyAKJ0vJGvnzIdkKIvD1w0NCStA19T-TzoM",
+        authDomain: "venecia-control.firebaseapp.com",
+        projectId: "venecia-control",
+        storageBucket: "venecia-control.firebasestorage.app",
+        messagingSenderId: "486778694402",
+        appId: "1:486778694402:web:4276617163b85b5b7bf01b"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Establecer fechas actuales
+    const ahora = new Date();
+    const hoy = ahora.toISOString().split('T')[0];
+    const mesActual = hoy.substring(0, 7); // Formato YYYY-MM
+    document.getElementById('filtro').value = hoy;
+    document.getElementById('filtroMes').value = mesActual;
+
+    function cargarTodo() {
+        const fecha = document.getElementById('filtro').value;
+        cargarBotellas(fecha);
+        cargarCortesias(fecha);
+    }
+
+    // Cargar Botellas Agrupadas
+    function cargarBotellas(fecha) {
+        db.collection("ventas").where("f", "==", fecha).onSnapshot(snap => {
+            const tabla = document.getElementById('tabla-botellas');
+            tabla.innerHTML = "";
+            let agrupado = {};
+
+            snap.forEach(doc => {
+                const d = doc.data();
+                const llave = `${d.m}-${d.b}`; // Agrupar por mozo y botella
+                if(!agrupado[llave]) {
+                    agrupado[llave] = { mozo: d.m, botella: d.b, cant: 0 };
+                }
+                agrupado[llave].cant += parseInt(d.c);
+            });
+
+            for(let k in agrupado) {
+                const item = agrupado[k];
+                tabla.innerHTML += `<tr><td><b>${item.cant}</b></td><td>${item.mozo}</td><td>${item.botella}</td></tr>`;
+            }
+        });
+    }
+
+    // Cargar Cortesías Agrupadas
+    function cargarCortesias(fecha) {
+        db.collection("cortesias").where("f", "==", fecha).onSnapshot(snap => {
+            const tabla = document.getElementById('tabla-cortesias');
+            tabla.innerHTML = "";
+            let agrupado = {};
+
+            snap.forEach(doc => {
+                const d = doc.data();
+                const llave = `${d.n}-${d.p}`; // Agrupar por nombre y producto
+                if(!agrupado[llave]) {
+                    agrupado[llave] = { nom: d.n, pro: d.p, cant: 0 };
+                }
+                agrupado[llave].cant += parseInt(d.c);
+            });
+
+            for(let k in agrupado) {
+                const item = agrupado[k];
+                tabla.innerHTML += `<tr><td><b>${item.cant}</b></td><td>${item.nom}</td><td>${item.pro}</td></tr>`;
+            }
+        });
+    }
+
+    // Balance Mensual con Ranking Histórico
+    function cargarBalanceMensual() {
+        const mesSel = document.getElementById('filtroMes').value; // Formato "2026-02"
+        const rankingDiv = document.getElementById('ranking-mozos');
+        
+        db.collection("ventas").where("f", ">=", `${mesSel}-01`).where("f", "<=", `${mesSel}-31`).onSnapshot(snap => {
+            rankingDiv.innerHTML = "";
+            let balance = {};
+
+            snap.forEach(doc => {
+                const d = doc.data();
+                const mozo = d.m || "Otros";
+                const cant = parseInt(d.c) || 0;
+                const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
+
+                if(!balance[mozo]) balance[mozo] = { botellas: 0, rp: 0 };
+                if(esRP) balance[mozo].rp += cant;
+                else balance[mozo].botellas += cant;
+            });
+
+            const ordenados = Object.entries(balance).sort((a, b) => b[1].botellas - a[1].botellas);
+
+            if(ordenados.length === 0) {
+                rankingDiv.innerHTML = "<p style='text-align:center; color:#888;'>No hay datos en el mes seleccionado.</p>";
+                return;
+            }
+
+            ordenados.forEach(([nombre, stats], index) => {
+                const medalla = index === 0 ? "🥇" : (index === 1 ? "🥈" : (index === 2 ? "🥉" : ""));
+                rankingDiv.innerHTML += `
+                    <div class="card-mozo">
+                        <div class="nombre-mozo"><span>${medalla} ${nombre}</span> <span>POS. ${index+1}</span></div>
+                        <div class="stats-mozo">
+                            <div class="stat-item"><span class="stat-val">${stats.botellas}</span><span class="stat-lab">Botellas</span></div>
+                            <div class="stat-item"><span class="stat-val" style="color:#d4af37">${stats.rp}</span><span class="stat-lab">Cortesías RP</span></div>
+                        </div>
+                    </div>`;
+            });
+        });
+    }
+
+    // Carga inicial
+    cargarTodo();
+    cargarBalanceMensual();
+</script>
+</body>
+</html>
