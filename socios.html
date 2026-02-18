@@ -9,18 +9,15 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #0d0d0d; color: #e0e0e0; margin: 0; padding: 10px; }
         .container { max-width: 600px; margin: auto; background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #333; }
-        h2 { text-align: center; color: #d4af37; text-transform: uppercase; font-size: 1em; margin: 25px 0 10px 0; border-bottom: 1px solid #d4af37; padding-bottom: 5px; }
+        h2 { text-align: center; color: #d4af37; text-transform: uppercase; font-size: 1em; margin: 25px 0 10px 0; border-bottom: 1px solid #d4af37; padding-bottom: 5px; position: relative; }
+        .total-global-tag { position: absolute; right: 0; bottom: 5px; font-size: 0.6em; background: #d4af37; color: black; padding: 2px 6px; border-radius: 4px; }
         .input-group { background: #222; padding: 10px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #d4af37; }
         label { display: block; font-size: 0.75em; color: #888; margin-bottom: 5px; text-transform: uppercase; }
         input, select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #333; background: #111; color: white; box-sizing: border-box; font-size: 1em; }
-        
         .tabla-resumen { width: 100%; border-collapse: collapse; font-size: 0.8em; margin-top: 10px; background: #111; }
         .tabla-resumen th { background: #d4af37; color: black; padding: 8px; border: 1px solid #333; }
         .tabla-resumen td { padding: 8px; border: 1px solid #333; text-align: center; }
-        
-        .totales-box { background: #222; padding: 10px; border-radius: 8px; border: 1px solid #d4af37; margin-top: 10px; }
-        .total-row { display: flex; justify-content: space-between; font-size: 0.85em; padding: 5px 0; border-bottom: 1px solid #333; }
-        
+        .rp-detail { font-size: 0.85em; color: #d4af37; margin-left: 4px; font-weight: normal; }
         .card-mozo { background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #444; }
         .nombre-mozo { color: #d4af37; font-weight: bold; font-size: 1em; text-transform: uppercase; display: flex; justify-content: space-between; }
         .stats-mozo { display: flex; justify-content: space-around; margin-top: 8px; }
@@ -39,7 +36,10 @@
         <input type="date" id="filtro" onchange="cargarTodo()">
     </div>
 
-    <h2>Botellas Entregadas (Hoy)</h2>
+    <h2>
+        Botellas Entregadas (Hoy)
+        <span id="global-botellas" class="total-global-tag">Total: 0</span>
+    </h2>
     <table class="tabla-resumen">
         <thead>
             <tr><th>CANT</th><th>MOZO / CLIENTE</th><th>PRODUCTO</th></tr>
@@ -75,10 +75,9 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Establecer fechas actuales
     const ahora = new Date();
     const hoy = ahora.toISOString().split('T')[0];
-    const mesActual = hoy.substring(0, 7); // Formato YYYY-MM
+    const mesActual = hoy.substring(0, 7);
     document.getElementById('filtro').value = hoy;
     document.getElementById('filtroMes').value = mesActual;
 
@@ -88,45 +87,50 @@
         cargarCortesias(fecha);
     }
 
-    // Cargar Botellas Agrupadas
     function cargarBotellas(fecha) {
         db.collection("ventas").where("f", "==", fecha).onSnapshot(snap => {
             const tabla = document.getElementById('tabla-botellas');
+            const globalLabel = document.getElementById('global-botellas');
             tabla.innerHTML = "";
             let agrupado = {};
+            let totalGeneral = 0;
 
             snap.forEach(doc => {
                 const d = doc.data();
-                const llave = `${d.m}-${d.b}`; // Agrupar por mozo y botella
+                const cant = parseInt(d.c) || 0;
+                const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
+                const llave = `${d.m}-${d.b.replace(" RP","").replace(" rp","").trim()}`; 
+                
+                totalGeneral += cant;
+
                 if(!agrupado[llave]) {
-                    agrupado[llave] = { mozo: d.m, botella: d.b, cant: 0 };
+                    agrupado[llave] = { mozo: d.m, botella: d.b.replace(" RP","").replace(" rp","").trim(), total: 0, rp: 0 };
                 }
-                agrupado[llave].cant += parseInt(d.c);
+                agrupado[llave].total += cant;
+                if(esRP) agrupado[llave].rp += cant;
             });
+
+            globalLabel.innerText = `Total: ${totalGeneral}`;
 
             for(let k in agrupado) {
                 const item = agrupado[k];
-                tabla.innerHTML += `<tr><td><b>${item.cant}</b></td><td>${item.mozo}</td><td>${item.botella}</td></tr>`;
+                const rpText = item.rp > 0 ? `<span class="rp-detail">(${item.rp} RP)</span>` : "";
+                tabla.innerHTML += `<tr><td><b>${item.total}</b></td><td>${item.mozo}</td><td>${item.botella}${rpText}</td></tr>`;
             }
         });
     }
 
-    // Cargar Cortesías Agrupadas
     function cargarCortesias(fecha) {
         db.collection("cortesias").where("f", "==", fecha).onSnapshot(snap => {
             const tabla = document.getElementById('tabla-cortesias');
             tabla.innerHTML = "";
             let agrupado = {};
-
             snap.forEach(doc => {
                 const d = doc.data();
-                const llave = `${d.n}-${d.p}`; // Agrupar por nombre y producto
-                if(!agrupado[llave]) {
-                    agrupado[llave] = { nom: d.n, pro: d.p, cant: 0 };
-                }
+                const llave = `${d.n}-${d.p}`;
+                if(!agrupado[llave]) agrupado[llave] = { nom: d.n, pro: d.p, cant: 0 };
                 agrupado[llave].cant += parseInt(d.c);
             });
-
             for(let k in agrupado) {
                 const item = agrupado[k];
                 tabla.innerHTML += `<tr><td><b>${item.cant}</b></td><td>${item.nom}</td><td>${item.pro}</td></tr>`;
@@ -134,33 +138,26 @@
         });
     }
 
-    // Balance Mensual con Ranking Histórico
     function cargarBalanceMensual() {
-        const mesSel = document.getElementById('filtroMes').value; // Formato "2026-02"
+        const mesSel = document.getElementById('filtroMes').value;
         const rankingDiv = document.getElementById('ranking-mozos');
-        
         db.collection("ventas").where("f", ">=", `${mesSel}-01`).where("f", "<=", `${mesSel}-31`).onSnapshot(snap => {
             rankingDiv.innerHTML = "";
             let balance = {};
-
             snap.forEach(doc => {
                 const d = doc.data();
                 const mozo = d.m || "Otros";
                 const cant = parseInt(d.c) || 0;
                 const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
-
                 if(!balance[mozo]) balance[mozo] = { botellas: 0, rp: 0 };
                 if(esRP) balance[mozo].rp += cant;
                 else balance[mozo].botellas += cant;
             });
-
             const ordenados = Object.entries(balance).sort((a, b) => b[1].botellas - a[1].botellas);
-
             if(ordenados.length === 0) {
-                rankingDiv.innerHTML = "<p style='text-align:center; color:#888;'>No hay datos en el mes seleccionado.</p>";
+                rankingDiv.innerHTML = "<p style='text-align:center; color:#888;'>No hay datos.</p>";
                 return;
             }
-
             ordenados.forEach(([nombre, stats], index) => {
                 const medalla = index === 0 ? "🥇" : (index === 1 ? "🥈" : (index === 2 ? "🥉" : ""));
                 rankingDiv.innerHTML += `
@@ -175,7 +172,6 @@
         });
     }
 
-    // Carga inicial
     cargarTodo();
     cargarBalanceMensual();
 </script>
