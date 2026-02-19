@@ -24,6 +24,7 @@
         .stat-item { text-align: center; }
         .stat-val { display: block; font-size: 1.1em; color: white; font-weight: bold; }
         .stat-lab { font-size: 0.65em; color: #888; text-transform: uppercase; }
+        .rango-semana { text-align: center; font-size: 0.8em; color: #d4af37; margin-bottom: 10px; font-style: italic; }
     </style>
 </head>
 <body>
@@ -55,6 +56,14 @@
         <tbody id="tabla-cortesias"></tbody>
     </table>
 
+    <h2 style="background:#d4af37; color:black; padding:5px; margin-top:40px;">Ranking Semanal</h2>
+    <div class="input-group">
+        <label>Seleccionar Semana (Cualquier día):</label>
+        <input type="date" id="filtroSemana" onchange="cargarRankingSemanal()">
+    </div>
+    <div id="texto-semana" class="rango-semana"></div>
+    <div id="ranking-semanal"></div>
+
     <h2 style="background:#d4af37; color:black; padding:5px; margin-top:40px;">Ranking Mensual de Mozos</h2>
     <div class="input-group">
         <label>Seleccionar Mes del Ranking:</label>
@@ -79,6 +88,7 @@
     const hoy = ahora.toISOString().split('T')[0];
     const mesActual = hoy.substring(0, 7);
     document.getElementById('filtro').value = hoy;
+    document.getElementById('filtroSemana').value = hoy;
     document.getElementById('filtroMes').value = mesActual;
 
     function cargarTodo() {
@@ -92,31 +102,36 @@
             const tabla = document.getElementById('tabla-botellas');
             const globalLabel = document.getElementById('global-botellas');
             tabla.innerHTML = "";
-            let agrupado = {};
+            let dataArr = [];
             let totalGeneral = 0;
 
             snap.forEach(doc => {
                 const d = doc.data();
                 const cant = parseInt(d.c) || 0;
-                const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
-                const llave = `${d.m}-${d.b.replace(" RP","").replace(" rp","").trim()}`; 
-                
                 totalGeneral += cant;
-
-                if(!agrupado[llave]) {
-                    agrupado[llave] = { mozo: d.m, botella: d.b.replace(" RP","").replace(" rp","").trim(), total: 0, rp: 0 };
-                }
-                agrupado[llave].total += cant;
-                if(esRP) agrupado[llave].rp += cant;
+                const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
+                const nombreLimpio = d.b.replace(/ RP/i, "").trim();
+                dataArr.push({ mozo: d.m, botella: nombreLimpio, cant: cant, esRP: esRP });
             });
 
+            dataArr.sort((a, b) => a.mozo.localeCompare(b.mozo));
             globalLabel.innerText = `Total: ${totalGeneral}`;
 
-            for(let k in agrupado) {
-                const item = agrupado[k];
+            let agrupado = [];
+            dataArr.forEach(item => {
+                let existe = agrupado.find(x => x.mozo === item.mozo && x.botella === item.botella);
+                if(existe) {
+                    existe.total += item.cant;
+                    if(item.esRP) existe.rp += item.cant;
+                } else {
+                    agrupado.push({ mozo: item.mozo, botella: item.botella, total: item.cant, rp: item.esRP ? item.cant : 0 });
+                }
+            });
+
+            agrupado.forEach(item => {
                 const rpText = item.rp > 0 ? `<span class="rp-detail">(${item.rp} RP)</span>` : "";
                 tabla.innerHTML += `<tr><td><b>${item.total}</b></td><td>${item.mozo}</td><td>${item.botella}${rpText}</td></tr>`;
-            }
+            });
         });
     }
 
@@ -124,25 +139,47 @@
         db.collection("cortesias").where("f", "==", fecha).onSnapshot(snap => {
             const tabla = document.getElementById('tabla-cortesias');
             tabla.innerHTML = "";
-            let agrupado = {};
+            let arr = [];
             snap.forEach(doc => {
                 const d = doc.data();
-                const llave = `${d.n}-${d.p}`;
-                if(!agrupado[llave]) agrupado[llave] = { nom: d.n, pro: d.p, cant: 0 };
-                agrupado[llave].cant += parseInt(d.c);
+                arr.push({ nom: d.n, pro: d.p, cant: parseInt(d.c) || 0 });
             });
-            for(let k in agrupado) {
-                const item = agrupado[k];
+            arr.sort((a, b) => a.nom.localeCompare(b.nom));
+            arr.forEach(item => {
                 tabla.innerHTML += `<tr><td><b>${item.cant}</b></td><td>${item.nom}</td><td>${item.pro}</td></tr>`;
-            }
+            });
         });
+    }
+
+    function cargarRankingSemanal() {
+        const inputFecha = document.getElementById('filtroSemana').value;
+        const fechaBase = new Date(inputFecha + "T12:00:00");
+        const diaSemana = fechaBase.getDay(); 
+        const diff = fechaBase.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1); 
+        
+        const lunes = new Date(fechaBase.setDate(diff));
+        const domingo = new Date(lunes);
+        domingo.setDate(lunes.getDate() + 6);
+
+        const fInicio = lunes.toISOString().split('T')[0];
+        const fFin = domingo.toISOString().split('T')[0];
+
+        // Mostrar el rango de fechas al socio
+        const opciones = { day: '2-digit', month: 'short' };
+        document.getElementById('texto-semana').innerText = `Sumando del ${lunes.toLocaleDateString('es-ES', opciones)} al ${domingo.toLocaleDateString('es-ES', opciones)}`;
+
+        renderRanking("ranking-semanal", fInicio, fFin);
     }
 
     function cargarBalanceMensual() {
         const mesSel = document.getElementById('filtroMes').value;
-        const rankingDiv = document.getElementById('ranking-mozos');
-        db.collection("ventas").where("f", ">=", `${mesSel}-01`).where("f", "<=", `${mesSel}-31`).onSnapshot(snap => {
-            rankingDiv.innerHTML = "";
+        renderRanking("ranking-mozos", `${mesSel}-01`, `${mesSel}-31`);
+    }
+
+    async function renderRanking(containerId, fInicio, fFin) {
+        const div = document.getElementById(containerId);
+        db.collection("ventas").where("f", ">=", fInicio).where("f", "<=", fFin).onSnapshot(snap => {
+            div.innerHTML = "";
             let balance = {};
             snap.forEach(doc => {
                 const d = doc.data();
@@ -155,12 +192,12 @@
             });
             const ordenados = Object.entries(balance).sort((a, b) => b[1].botellas - a[1].botellas);
             if(ordenados.length === 0) {
-                rankingDiv.innerHTML = "<p style='text-align:center; color:#888;'>No hay datos.</p>";
+                div.innerHTML = "<p style='text-align:center; color:#888; font-size:0.8em;'>Sin datos en este periodo.</p>";
                 return;
             }
             ordenados.forEach(([nombre, stats], index) => {
                 const medalla = index === 0 ? "🥇" : (index === 1 ? "🥈" : (index === 2 ? "🥉" : ""));
-                rankingDiv.innerHTML += `
+                div.innerHTML += `
                     <div class="card-mozo">
                         <div class="nombre-mozo"><span>${medalla} ${nombre}</span> <span>POS. ${index+1}</span></div>
                         <div class="stats-mozo">
@@ -173,6 +210,7 @@
     }
 
     cargarTodo();
+    cargarRankingSemanal();
     cargarBalanceMensual();
 </script>
 </body>
