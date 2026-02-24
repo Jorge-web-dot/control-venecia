@@ -3,129 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control - Asistencias</title>
+    <title>Panel de Control - Venecia</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #eef2f3; padding: 20px; font-family: sans-serif; }
-        .card { border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: none; margin-bottom: 20px; }
-        .tardanza-badge { background: #ff4d4d; color: white; padding: 2px 8px; border-radius: 5px; font-size: 0.8rem; }
-        .puntual-badge { background: #28a745; color: white; padding: 2px 8px; border-radius: 5px; font-size: 0.8rem; }
-        .justificacion-text { font-style: italic; color: #555; font-size: 0.85rem; background: #fff3cd; padding: 5px; border-radius: 5px; margin-top: 5px; display: block; border-left: 3px solid #ffc107; }
-        .btn-delete { font-size: 0.7rem; padding: 0px 5px; }
+        body { background: #f4f7f6; padding: 20px; }
+        .card { border-radius: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border: none; margin-bottom: 20px; }
+        .tardanza { color: #d9534f; font-weight: bold; }
+        .puntual { color: #5cb85c; font-weight: bold; }
     </style>
 </head>
 <body>
-
 <div class="container">
-    <h2 class="mb-4 text-center">⚙️ Panel de Asistencias</h2>
-
+    <h2 class="text-center mb-4">⚙️ Gestión de Personal</h2>
+    
     <div class="card p-3">
-        <h5 class="card-title">1. Administrar Personal</h5>
-        <p class="text-muted small">Agrega los nombres aquí para que aparezcan en la web de los trabajadores.</p>
+        <h5>Añadir Trabajador</h5>
         <div class="input-group mb-3">
-            <input type="text" id="nuevo-trabajador" class="form-control" placeholder="Nombre completo">
-            <button class="btn btn-dark" onclick="agregarTrabajador()">Agregar</button>
+            <input type="text" id="nombreT" class="form-control" placeholder="Nombre completo">
+            <button class="btn btn-primary" onclick="agregar()">Agregar</button>
         </div>
-        <div id="lista-gestion-personal" class="d-flex flex-wrap gap-2">
-            </div>
+        <div id="lista" class="d-flex flex-wrap gap-2"></div>
     </div>
 
     <div class="card p-3">
-        <h5 class="card-title">2. Reporte de Hoy (<span id="fecha-hoy"></span>)</h5>
-        <div class="table-responsive">
-            <table class="table align-middle">
-                <thead>
-                    <tr>
-                        <th>Trabajador</th>
-                        <th>Ingreso</th>
-                        <th>Estado</th>
-                        <th>Nota / Justificación</th>
-                    </tr>
-                </thead>
-                <tbody id="tabla-asistencias">
-                    </tbody>
-            </table>
-        </div>
+        <h5>Asistencias de Hoy</h5>
+        <table class="table">
+            <thead><tr><th>Nombre</th><th>Hora</th><th>Estado</th></tr></thead>
+            <tbody id="tabla"></tbody>
+        </table>
     </div>
 </div>
 
 <script>
-    // TU CONFIGURACIÓN DE FIREBASE
-    const firebaseConfig = {
-        databaseURL: "https://control-venecia-default-rtdb.firebaseio.com/"
-    };
+    // TU LINK CORREGIDO SEGÚN LA FOTO
+    const firebaseConfig = { databaseURL: "https://venecia-control-default-rtdb.firebaseio.com/" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    document.getElementById('fecha-hoy').innerText = new Date().toLocaleDateString();
-
-    // --- LÓGICA DE PERSONAL ---
-
-    function agregarTrabajador() {
-        const input = document.getElementById('nuevo-trabajador');
-        const nombre = input.value.trim();
-        if (nombre === "") return;
-        
-        db.ref('asistencias_sistema/lista_trabajadores').push({
-            nombre: nombre
-        }).then(() => { input.value = ""; });
+    function agregar() {
+        const n = document.getElementById('nombreT').value;
+        if(n) db.ref('asistencias/personal').push({nombre: n}).then(() => document.getElementById('nombreT').value="");
     }
 
-    function eliminarTrabajador(id) {
-        if(confirm("¿Seguro que quieres eliminar a este trabajador?")) {
-            db.ref('asistencias_sistema/lista_trabajadores/' + id).remove();
-        }
-    }
-
-    // Escuchar lista de trabajadores
-    db.ref('asistencias_sistema/lista_trabajadores').on('value', (snapshot) => {
-        const div = document.getElementById('lista-gestion-personal');
-        div.innerHTML = "";
-        snapshot.forEach((child) => {
-            div.innerHTML += `
-                <div class="badge bg-white text-dark border p-2 d-flex align-items-center">
-                    ${child.val().nombre} 
-                    <button class="btn btn-outline-danger btn-delete ms-2" onclick="eliminarTrabajador('${child.key}')">X</button>
-                </div>`;
+    db.ref('asistencias/personal').on('value', s => {
+        const div = document.getElementById('lista'); div.innerHTML = "";
+        s.forEach(child => {
+            div.innerHTML += `<span class="badge bg-dark p-2">${child.val().nombre} <button class="btn-close btn-close-white" onclick="db.ref('asistencias/personal/${child.key}').remove()"></button></span>`;
         });
     });
 
-    // --- LÓGICA DE REGISTROS ---
-
     const hoy = new Date().toLocaleDateString();
-    db.ref('asistencias_sistema/registros_diarios').orderByChild('fecha').equalTo(hoy).on('value', (snapshot) => {
-        const tabla = document.getElementById('tabla-asistencias');
-        tabla.innerHTML = "";
-        
-        let registros = [];
-        snapshot.forEach(child => { registros.unshift(child.val()); });
-
-        if (registros.length === 0) {
-            tabla.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Aún no hay marcas el día de hoy</td></tr>';
-        }
-
-        registros.forEach(data => {
-            let estadoHtml = data.tardanza_min > 0 
-                ? `<span class="tardanza-badge">${data.tardanza_min} min tarde</span>` 
-                : `<span class="puntual-badge">Puntual</span>`;
-            
-            let justificacionHtml = data.justificacion 
-                ? `<span class="justificacion-text">"${data.justificacion}"</span>` 
-                : `<small class="text-muted">-</small>`;
-
-            tabla.innerHTML += `
-                <tr>
-                    <td><strong>${data.trabajador}</strong></td>
-                    <td>${data.hora}</td>
-                    <td>${estadoHtml}</td>
-                    <td>${justificacionHtml}</td>
-                </tr>
-            `;
+    db.ref('asistencias/diarias').orderByChild('fecha').equalTo(hoy).on('value', s => {
+        const t = document.getElementById('tabla'); t.innerHTML = "";
+        s.forEach(child => {
+            const d = child.val();
+            t.innerHTML += `<tr><td>${d.nombre}</td><td>${d.hora}</td><td class="${d.tarde > 0 ? 'tardanza':'puntual'}">${d.tarde > 0 ? d.tarde+' min tarde':'Puntual'}</td></tr>`;
         });
     });
 </script>
-
 </body>
 </html>
