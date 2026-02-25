@@ -3,18 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marcado de Asistencia</title>
+    <title>Asistencia GPS - Venecia</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #121212; color: white; }
+        .card { border-radius: 20px; color: #333; }
+        #status-gps { font-size: 0.9rem; margin-top: 10px; }
+    </style>
 </head>
-<body class="bg-light">
+<body>
 <div class="container py-5 text-center">
-    <div class="card p-4 mx-auto" style="max-width: 400px; border-radius: 20px;">
-        <h3>📍 Registro Venecia</h3>
-        <p class="text-muted">Selecciona tu nombre</p>
-        <select id="user" class="form-select mb-3"></select>
-        <button class="btn btn-success btn-lg w-100" onclick="marcar()">MARCAR ENTRADA</button>
+    <div class="card p-4 mx-auto" style="max-width: 400px;">
+        <h2 class="mb-4">📍 Check-In GPS</h2>
+        <div id="gps-alert" class="alert alert-info">Validando ubicación...</div>
+        
+        <select id="user" class="form-select form-select-lg mb-4" disabled>
+            <option>Cargando personal...</option>
+        </select>
+        
+        <button id="btnMarcar" class="btn btn-primary btn-lg w-100 fw-bold" onclick="validarYMarcar()" disabled>
+            REGISTRAR ENTRADA
+        </button>
         <div id="msg" class="mt-3"></div>
     </div>
 </div>
@@ -24,31 +35,86 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // COORDENADAS DEL LOCAL (AV. ARRIOLA)
+    const LOCAL_LAT = -12.0754; 
+    const LOCAL_LON = -77.0135;
+    const RADIO_MAXIMO = 0.2; // 200 metros
+
+    let ubicacionValida = false;
+
+    // 1. Cargar Personal
     db.ref('asistencias/personal').on('value', s => {
-        const sel = document.getElementById('user'); sel.innerHTML = "";
+        const sel = document.getElementById('user');
+        sel.innerHTML = "<option value=''>Selecciona tu nombre</option>";
         s.forEach(child => {
             sel.innerHTML += `<option value="${child.val().nombre}">${child.val().nombre}</option>`;
         });
     });
 
-    function marcar() {
+    // 2. Función Haversine para calcular distancia entre dos puntos GPS
+    function calcularDistancia(lat1, lon1, lat2, lon2) {
+        const R = 6371; 
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c; // Distancia en km
+    }
+
+    // 3. Validar GPS al cargar la página
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            const dist = calcularDistancia(pos.coords.latitude, pos.coords.longitude, LOCAL_LAT, LOCAL_LON);
+            
+            if (dist <= RADIO_MAXIMO) {
+                ubicacionValida = true;
+                document.getElementById('gps-alert').className = "alert alert-success";
+                document.getElementById('gps-alert').innerText = "✅ Estás en el local. Puedes marcar.";
+                document.getElementById('user').disabled = false;
+                document.getElementById('btnMarcar').disabled = false;
+            } else {
+                document.getElementById('gps-alert').className = "alert alert-danger";
+                document.getElementById('gps-alert').innerText = "❌ No estás en el local (Estás a " + dist.toFixed(2) + " km).";
+            }
+        }, err => {
+            document.getElementById('gps-alert').className = "alert alert-warning";
+            document.getElementById('gps-alert').innerText = "⚠️ Activa el GPS para poder marcar.";
+        });
+    }
+
+    function validarYMarcar() {
         const u = document.getElementById('user').value;
-        const now = new Date();
-        const hora = now.getHours() + ":" + now.getMinutes().toString().padStart(2, '0');
+        if(!u) return alert("Selecciona tu nombre");
         
-        // Calcular tardanza (ejemplo después de las 08:30)
+        const hoy = new Date().toLocaleDateString('es-PE');
+        
+        db.ref('asistencias/diarias').orderByChild('nombre').equalTo(u).once('value', s => {
+            let yaExiste = false;
+            s.forEach(c => { if(c.val().fecha === hoy) yaExiste = true; });
+
+            if(yaExiste) {
+                document.getElementById('msg').innerHTML = "<div class='alert alert-danger'>Ya registraste tu entrada hoy.</div>";
+            } else {
+                guardarEnFirebase(u, hoy);
+            }
+        });
+    }
+
+    function guardarEnFirebase(nombre, fecha) {
+        const ahora = new Date();
+        const hora = ahora.getHours() + ":" + ahora.getMinutes().toString().padStart(2, '0');
         let minTarde = 0;
-        if(now.getHours() >= 8 && now.getMinutes() > 30) {
-            minTarde = ((now.getHours() - 8) * 60) + (now.getMinutes() - 30);
+        if(ahora.getHours() > 8 || (ahora.getHours() === 8 && ahora.getMinutes() > 30)) {
+            minTarde = ((ahora.getHours() - 8) * 60) + (ahora.getMinutes() - 30);
         }
 
         db.ref('asistencias/diarias').push({
-            nombre: u,
-            hora: hora,
-            fecha: now.toLocaleDateString(),
-            tarde: minTarde
+            nombre: nombre, hora: hora, fecha: fecha, tarde: minTarde
         }).then(() => {
-            document.getElementById('msg').innerHTML = "<div class='alert alert-success'>✅ Registro exitoso</div>";
+            document.getElementById('msg').innerHTML = "<div class='alert alert-success'>✅ Entrada registrada: " + hora + "</div>";
+            document.getElementById('btnMarcar').disabled = true;
         });
     }
 </script>
