@@ -17,7 +17,14 @@
         .tabla-resumen { width: 100%; border-collapse: collapse; font-size: 0.8em; margin-top: 10px; background: #111; }
         .tabla-resumen th { background: #d4af37; color: black; padding: 8px; border: 1px solid #333; }
         .tabla-resumen td { padding: 8px; border: 1px solid #333; text-align: center; }
-        .rp-detail { font-size: 0.85em; color: #d4af37; margin-left: 4px; font-weight: normal; }
+        
+        /* LA F DE FANTASMA - COLOR ROJO BRILLANTE PARA QUE SE VEA BIEN */
+        .fantasma-tag { color: #ff4444; font-weight: bold; margin-left: 8px; font-size: 1.1em; }
+        
+        /* MINI RANKING */
+        .mini-ranking { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 15px; font-size: 0.85em; }
+        .mini-chip { background: #2a2a2a; padding: 6px 12px; border-radius: 20px; border: 1px solid #d4af37; color: #fff; }
+        
         .card-mozo { background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #444; }
         .nombre-mozo { color: #d4af37; font-weight: bold; font-size: 1em; text-transform: uppercase; display: flex; justify-content: space-between; }
         .stats-mozo { display: flex; justify-content: space-around; margin-top: 8px; }
@@ -36,6 +43,8 @@
         <label>Ver Movimiento del Día:</label>
         <input type="date" id="filtro" onchange="cargarTodo()">
     </div>
+
+    <div id="mini-ranking-diario" class="mini-ranking"></div>
 
     <h2>
         Botellas Entregadas (Hoy)
@@ -66,8 +75,14 @@
 
     <h2 style="background:#d4af37; color:black; padding:5px; margin-top:40px;">Ranking Mensual de Mozos</h2>
     <div class="input-group">
-        <label>Seleccionar Mes del Ranking:</label>
+        <label>Seleccionar Mes:</label>
         <input type="month" id="filtroMes" onchange="cargarBalanceMensual()">
+        <label style="margin-top:10px;">Ver Periodo:</label>
+        <select id="filtroQuincena" onchange="cargarBalanceMensual()">
+            <option value="mes">Mes Completo</option>
+            <option value="q1">1ra Quincena (1 - 15)</option>
+            <option value="q2">2da Quincena (16 - Fin)</option>
+        </select>
     </div>
     <div id="ranking-mozos"></div>
 </div>
@@ -101,17 +116,43 @@
         db.collection("ventas").where("f", "==", fecha).onSnapshot(snap => {
             const tabla = document.getElementById('tabla-botellas');
             const globalLabel = document.getElementById('global-botellas');
+            const miniRankingDiv = document.getElementById('mini-ranking-diario');
+            
             tabla.innerHTML = "";
+            miniRankingDiv.innerHTML = "";
+            
             let dataArr = [];
             let totalGeneral = 0;
+            let mozosHoy = {}; 
 
             snap.forEach(doc => {
                 const d = doc.data();
                 const cant = parseInt(d.c) || 0;
                 totalGeneral += cant;
-                const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
-                const nombreLimpio = d.b.replace(/ RP/i, "").trim();
+                
+                // DETECCIÓN REFORZADA DE BOTELLA FANTASMA / RP
+                // Revisa el campo 'tipo', o si el nombre contiene 'RP' o 'FANTASMA'
+                const esRP = (
+                    d.tipo === "RP" || 
+                    d.tipo === "FANTASMA" || 
+                    (d.b && d.b.toUpperCase().includes("RP")) || 
+                    (d.b && d.b.toUpperCase().includes("FANTASMA"))
+                );
+
+                const nombreLimpio = d.b.replace(/ RP/i, "").replace(/ FANTASMA/i, "").trim();
+                
                 dataArr.push({ mozo: d.m, botella: nombreLimpio, cant: cant, esRP: esRP });
+
+                if(!mozosHoy[d.m]) mozosHoy[d.m] = { normal: 0, rp: 0 };
+                if(esRP) mozosHoy[d.m].rp += cant;
+                else mozosHoy[d.m].normal += cant;
+            });
+
+            // Mini Ranking Diario ordenado
+            const miniOrdenados = Object.entries(mozosHoy).sort((a,b) => (b[1].normal + b[1].rp) - (a[1].normal + a[1].rp));
+            miniOrdenados.forEach(([nom, st]) => {
+                const txtRP = st.rp > 0 ? ` + ${st.rp}RP` : "";
+                miniRankingDiv.innerHTML += `<div class="mini-chip"><b>${nom}:</b> ${st.normal}${txtRP}</div>`;
             });
 
             dataArr.sort((a, b) => a.mozo.localeCompare(b.mozo));
@@ -119,18 +160,18 @@
 
             let agrupado = [];
             dataArr.forEach(item => {
-                let existe = agrupado.find(x => x.mozo === item.mozo && x.botella === item.botella);
+                // Separamos visualmente si es RP/FANTASMA para que no se sume en la misma fila que una normal
+                let existe = agrupado.find(x => x.mozo === item.mozo && x.botella === item.botella && x.esRP === item.esRP);
                 if(existe) {
                     existe.total += item.cant;
-                    if(item.esRP) existe.rp += item.cant;
                 } else {
-                    agrupado.push({ mozo: item.mozo, botella: item.botella, total: item.cant, rp: item.esRP ? item.cant : 0 });
+                    agrupado.push({ mozo: item.mozo, botella: item.botella, total: item.cant, esRP: item.esRP });
                 }
             });
 
             agrupado.forEach(item => {
-                const rpText = item.rp > 0 ? `<span class="rp-detail">(${item.rp} RP)</span>` : "";
-                tabla.innerHTML += `<tr><td><b>${item.total}</b></td><td>${item.mozo}</td><td>${item.botella}${rpText}</td></tr>`;
+                const rpTag = item.esRP ? `<span class="fantasma-tag">[F]</span>` : "";
+                tabla.innerHTML += `<tr><td><b>${item.total}</b></td><td>${item.mozo}</td><td>${item.botella}${rpTag}</td></tr>`;
             });
         });
     }
@@ -164,7 +205,6 @@
         const fInicio = lunes.toISOString().split('T')[0];
         const fFin = domingo.toISOString().split('T')[0];
 
-        // Mostrar el rango de fechas al socio
         const opciones = { day: '2-digit', month: 'short' };
         document.getElementById('texto-semana').innerText = `Sumando del ${lunes.toLocaleDateString('es-ES', opciones)} al ${domingo.toLocaleDateString('es-ES', opciones)}`;
 
@@ -172,8 +212,23 @@
     }
 
     function cargarBalanceMensual() {
-        const mesSel = document.getElementById('filtroMes').value;
-        renderRanking("ranking-mozos", `${mesSel}-01`, `${mesSel}-31`);
+        const mesSel = document.getElementById('filtroMes').value; 
+        const qSel = document.getElementById('filtroQuincena').value;
+        
+        let fInicio, fFin;
+        
+        if(qSel === "q1") {
+            fInicio = `${mesSel}-01`;
+            fFin = `${mesSel}-15`;
+        } else if(qSel === "q2") {
+            fInicio = `${mesSel}-16`;
+            fFin = `${mesSel}-31`;
+        } else {
+            fInicio = `${mesSel}-01`;
+            fFin = `${mesSel}-31`;
+        }
+        
+        renderRanking("ranking-mozos", fInicio, fFin);
     }
 
     async function renderRanking(containerId, fInicio, fFin) {
@@ -185,12 +240,17 @@
                 const d = doc.data();
                 const mozo = d.m || "Otros";
                 const cant = parseInt(d.c) || 0;
-                const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
+                const esRP = (
+                    d.tipo === "RP" || 
+                    d.tipo === "FANTASMA" || 
+                    (d.b && d.b.toUpperCase().includes("RP")) || 
+                    (d.b && d.b.toUpperCase().includes("FANTASMA"))
+                );
                 if(!balance[mozo]) balance[mozo] = { botellas: 0, rp: 0 };
                 if(esRP) balance[mozo].rp += cant;
                 else balance[mozo].botellas += cant;
             });
-            const ordenados = Object.entries(balance).sort((a, b) => b[1].botellas - a[1].botellas);
+            const ordenados = Object.entries(balance).sort((a, b) => (b[1].botellas + b[1].rp) - (a[1].botellas + a[1].rp));
             if(ordenados.length === 0) {
                 div.innerHTML = "<p style='text-align:center; color:#888; font-size:0.8em;'>Sin datos en este periodo.</p>";
                 return;
@@ -202,7 +262,7 @@
                         <div class="nombre-mozo"><span>${medalla} ${nombre}</span> <span>POS. ${index+1}</span></div>
                         <div class="stats-mozo">
                             <div class="stat-item"><span class="stat-val">${stats.botellas}</span><span class="stat-lab">Botellas</span></div>
-                            <div class="stat-item"><span class="stat-val" style="color:#d4af37">${stats.rp}</span><span class="stat-lab">Cortesías RP</span></div>
+                            <div class="stat-item"><span class="stat-val" style="color:#d4af37">${stats.rp}</span><span class="stat-lab">Cortesías RP / F</span></div>
                         </div>
                     </div>`;
             });
