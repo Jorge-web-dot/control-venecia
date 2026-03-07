@@ -18,10 +18,10 @@
         .tabla-resumen th { background: #d4af37; color: black; padding: 8px; border: 1px solid #333; }
         .tabla-resumen td { padding: 8px; border: 1px solid #333; text-align: center; }
         
-        /* LA F DE FANTASMA - COLOR ROJO BRILLANTE PARA QUE SE VEA BIEN */
-        .fantasma-tag { color: #ff4444; font-weight: bold; margin-left: 8px; font-size: 1.1em; }
+        /* Etiquetas de identificación */
+        .f-tag { color: #ff4444; font-weight: bold; margin-left: 5px; } /* Rojo para Fantasma */
+        .rp-tag { color: #d4af37; font-weight: bold; margin-left: 5px; } /* Dorado para RP */
         
-        /* MINI RANKING */
         .mini-ranking { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 15px; font-size: 0.85em; }
         .mini-chip { background: #2a2a2a; padding: 6px 12px; border-radius: 20px; border: 1px solid #d4af37; color: #fff; }
         
@@ -67,7 +67,7 @@
 
     <h2 style="background:#d4af37; color:black; padding:5px; margin-top:40px;">Ranking Semanal</h2>
     <div class="input-group">
-        <label>Seleccionar Semana (Cualquier día):</label>
+        <label>Seleccionar Semana:</label>
         <input type="date" id="filtroSemana" onchange="cargarRankingSemanal()">
     </div>
     <div id="texto-semana" class="rango-semana"></div>
@@ -130,25 +130,25 @@
                 const cant = parseInt(d.c) || 0;
                 totalGeneral += cant;
                 
-                // DETECCIÓN REFORZADA DE BOTELLA FANTASMA / RP
-                // Revisa el campo 'tipo', o si el nombre contiene 'RP' o 'FANTASMA'
-                const esRP = (
-                    d.tipo === "RP" || 
-                    d.tipo === "FANTASMA" || 
-                    (d.b && d.b.toUpperCase().includes("RP")) || 
-                    (d.b && d.b.toUpperCase().includes("FANTASMA"))
-                );
+                // DISTINCIÓN ENTRE RP Y FANTASMA
+                const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
+                const esFantasma = (d.tipo === "FANTASMA" || (d.b && d.b.toUpperCase().includes("FANTASMA")));
 
                 const nombreLimpio = d.b.replace(/ RP/i, "").replace(/ FANTASMA/i, "").trim();
                 
-                dataArr.push({ mozo: d.m, botella: nombreLimpio, cant: cant, esRP: esRP });
+                dataArr.push({ mozo: d.m, botella: nombreLimpio, cant: cant, esRP: esRP, esFantasma: esFantasma });
 
                 if(!mozosHoy[d.m]) mozosHoy[d.m] = { normal: 0, rp: 0 };
-                if(esRP) mozosHoy[d.m].rp += cant;
-                else mozosHoy[d.m].normal += cant;
+                
+                // LOGICA DE SUMA MINI RANKING
+                if(esRP) {
+                    mozosHoy[d.m].rp += cant;
+                } else {
+                    // Si es normal O es fantasma, suma como botella normal
+                    mozosHoy[d.m].normal += cant;
+                }
             });
 
-            // Mini Ranking Diario ordenado
             const miniOrdenados = Object.entries(mozosHoy).sort((a,b) => (b[1].normal + b[1].rp) - (a[1].normal + a[1].rp));
             miniOrdenados.forEach(([nom, st]) => {
                 const txtRP = st.rp > 0 ? ` + ${st.rp}RP` : "";
@@ -160,18 +160,20 @@
 
             let agrupado = [];
             dataArr.forEach(item => {
-                // Separamos visualmente si es RP/FANTASMA para que no se sume en la misma fila que una normal
-                let existe = agrupado.find(x => x.mozo === item.mozo && x.botella === item.botella && x.esRP === item.esRP);
+                let existe = agrupado.find(x => x.mozo === item.mozo && x.botella === item.botella && x.esRP === item.esRP && x.esFantasma === item.esFantasma);
                 if(existe) {
                     existe.total += item.cant;
                 } else {
-                    agrupado.push({ mozo: item.mozo, botella: item.botella, total: item.cant, esRP: item.esRP });
+                    agrupado.push({ mozo: item.mozo, botella: item.botella, total: item.cant, esRP: item.esRP, esFantasma: item.esFantasma });
                 }
             });
 
             agrupado.forEach(item => {
-                const rpTag = item.esRP ? `<span class="fantasma-tag">[F]</span>` : "";
-                tabla.innerHTML += `<tr><td><b>${item.total}</b></td><td>${item.mozo}</td><td>${item.botella}${rpTag}</td></tr>`;
+                let tag = "";
+                if(item.esRP) tag = `<span class="rp-tag">[RP]</span>`;
+                else if(item.esFantasma) tag = `<span class="f-tag">[F]</span>`;
+                
+                tabla.innerHTML += `<tr><td><b>${item.total}</b></td><td>${item.mozo}</td><td>${item.botella}${tag}</td></tr>`;
             });
         });
     }
@@ -197,37 +199,21 @@
         const fechaBase = new Date(inputFecha + "T12:00:00");
         const diaSemana = fechaBase.getDay(); 
         const diff = fechaBase.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1); 
-        
         const lunes = new Date(fechaBase.setDate(diff));
         const domingo = new Date(lunes);
         domingo.setDate(lunes.getDate() + 6);
-
         const fInicio = lunes.toISOString().split('T')[0];
         const fFin = domingo.toISOString().split('T')[0];
-
-        const opciones = { day: '2-digit', month: 'short' };
-        document.getElementById('texto-semana').innerText = `Sumando del ${lunes.toLocaleDateString('es-ES', opciones)} al ${domingo.toLocaleDateString('es-ES', opciones)}`;
-
+        document.getElementById('texto-semana').innerText = `Sumando del ${lunes.toLocaleDateString('es-ES', {day:'2-digit', month:'short'})} al ${domingo.toLocaleDateString('es-ES', {day:'2-digit', month:'short'})}`;
         renderRanking("ranking-semanal", fInicio, fFin);
     }
 
     function cargarBalanceMensual() {
         const mesSel = document.getElementById('filtroMes').value; 
         const qSel = document.getElementById('filtroQuincena').value;
-        
-        let fInicio, fFin;
-        
-        if(qSel === "q1") {
-            fInicio = `${mesSel}-01`;
-            fFin = `${mesSel}-15`;
-        } else if(qSel === "q2") {
-            fInicio = `${mesSel}-16`;
-            fFin = `${mesSel}-31`;
-        } else {
-            fInicio = `${mesSel}-01`;
-            fFin = `${mesSel}-31`;
-        }
-        
+        let fInicio = `${mesSel}-01`, fFin = `${mesSel}-31`;
+        if(qSel === "q1") fFin = `${mesSel}-15`;
+        else if(qSel === "q2") fInicio = `${mesSel}-16`;
         renderRanking("ranking-mozos", fInicio, fFin);
     }
 
@@ -240,19 +226,14 @@
                 const d = doc.data();
                 const mozo = d.m || "Otros";
                 const cant = parseInt(d.c) || 0;
-                const esRP = (
-                    d.tipo === "RP" || 
-                    d.tipo === "FANTASMA" || 
-                    (d.b && d.b.toUpperCase().includes("RP")) || 
-                    (d.b && d.b.toUpperCase().includes("FANTASMA"))
-                );
+                const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
                 if(!balance[mozo]) balance[mozo] = { botellas: 0, rp: 0 };
                 if(esRP) balance[mozo].rp += cant;
                 else balance[mozo].botellas += cant;
             });
             const ordenados = Object.entries(balance).sort((a, b) => (b[1].botellas + b[1].rp) - (a[1].botellas + a[1].rp));
             if(ordenados.length === 0) {
-                div.innerHTML = "<p style='text-align:center; color:#888; font-size:0.8em;'>Sin datos en este periodo.</p>";
+                div.innerHTML = "<p style='text-align:center; color:#888; font-size:0.8em;'>Sin datos.</p>";
                 return;
             }
             ordenados.forEach(([nombre, stats], index) => {
@@ -262,7 +243,7 @@
                         <div class="nombre-mozo"><span>${medalla} ${nombre}</span> <span>POS. ${index+1}</span></div>
                         <div class="stats-mozo">
                             <div class="stat-item"><span class="stat-val">${stats.botellas}</span><span class="stat-lab">Botellas</span></div>
-                            <div class="stat-item"><span class="stat-val" style="color:#d4af37">${stats.rp}</span><span class="stat-lab">Cortesías RP / F</span></div>
+                            <div class="stat-item"><span class="stat-val" style="color:#d4af37">${stats.rp}</span><span class="stat-lab">Cortesías RP</span></div>
                         </div>
                     </div>`;
             });
