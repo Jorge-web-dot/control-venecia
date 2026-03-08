@@ -18,12 +18,11 @@
         .tabla-resumen th { background: #d4af37; color: black; padding: 8px; border: 1px solid #333; }
         .tabla-resumen td { padding: 8px; border: 1px solid #333; text-align: center; }
         
-        /* Etiquetas de identificación */
-        .f-tag { color: #ff4444; font-weight: bold; margin-left: 5px; } /* Rojo para Fantasma */
-        .rp-tag { color: #d4af37; font-weight: bold; margin-left: 5px; } /* Dorado para RP */
+        .f-tag { color: #ff4444; font-weight: bold; margin-left: 5px; } 
+        .rp-tag { color: #d4af37; font-weight: bold; margin-left: 5px; } 
         
         .mini-ranking { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 15px; font-size: 0.85em; }
-        .mini-chip { background: #2a2a2a; padding: 6px 12px; border-radius: 20px; border: 1px solid #d4af37; color: #fff; }
+        .mini-chip { background: #2a2a2a; padding: 6px 12px; border-radius: 20px; border: 1px solid #d4af37; color: #fff; cursor: pointer; }
         
         .card-mozo { background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #444; }
         .nombre-mozo { color: #d4af37; font-weight: bold; font-size: 1em; text-transform: uppercase; display: flex; justify-content: space-between; }
@@ -32,6 +31,12 @@
         .stat-val { display: block; font-size: 1.1em; color: white; font-weight: bold; }
         .stat-lab { font-size: 0.65em; color: #888; text-transform: uppercase; }
         .rango-semana { text-align: center; font-size: 0.8em; color: #d4af37; margin-bottom: 10px; font-style: italic; }
+
+        /* MODAL DE COMANDAS */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); }
+        .modal-content { background: #1a1a1a; margin: 15% auto; padding: 20px; border: 1px solid #d4af37; width: 85%; max-width: 400px; border-radius: 12px; }
+        .comanda-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; font-size: 0.9em; }
+        .btn-cerrar { background: #d4af37; color: black; border: none; padding: 10px; width: 100%; border-radius: 8px; font-weight: bold; margin-top: 15px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -46,22 +51,15 @@
 
     <div id="mini-ranking-diario" class="mini-ranking"></div>
 
-    <h2>
-        Botellas Entregadas (Hoy)
-        <span id="global-botellas" class="total-global-tag">Total: 0</span>
-    </h2>
+    <h2>Botellas Entregadas (Hoy) <span id="global-botellas" class="total-global-tag">Total: 0</span></h2>
     <table class="tabla-resumen">
-        <thead>
-            <tr><th>CANT</th><th>MOZO / CLIENTE</th><th>PRODUCTO</th></tr>
-        </thead>
+        <thead><tr><th>CANT</th><th>MOZO / CLIENTE</th><th>PRODUCTO</th></tr></thead>
         <tbody id="tabla-botellas"></tbody>
     </table>
 
     <h2>Cortesías Entregadas (Hoy)</h2>
     <table class="tabla-resumen">
-        <thead>
-            <tr><th>CANT</th><th>ASIGNADO A</th><th>PRODUCTO</th></tr>
-        </thead>
+        <thead><tr><th>CANT</th><th>ASIGNADO A</th><th>PRODUCTO</th></tr></thead>
         <tbody id="tabla-cortesias"></tbody>
     </table>
 
@@ -87,6 +85,14 @@
     <div id="ranking-mozos"></div>
 </div>
 
+<div id="modalComandas" class="modal">
+    <div class="modal-content">
+        <h3 id="modalTitulo" style="color:#d4af37; margin-top:0; text-align:center;"></h3>
+        <div id="cuerpoComandas"></div>
+        <button class="btn-cerrar" onclick="cerrarModal()">CERRAR</button>
+    </div>
+</div>
+
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyAKJ0vJGvnzIdkKIvD1w0NCStA19T-TzoM",
@@ -99,97 +105,79 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const ahora = new Date();
-    const hoy = ahora.toISOString().split('T')[0];
-    const mesActual = hoy.substring(0, 7);
+    const hoy = new Date().toISOString().split('T')[0];
     document.getElementById('filtro').value = hoy;
     document.getElementById('filtroSemana').value = hoy;
-    document.getElementById('filtroMes').value = mesActual;
+    document.getElementById('filtroMes').value = hoy.substring(0, 7);
+
+    let registrosDelDia = [];
 
     function cargarTodo() {
         const fecha = document.getElementById('filtro').value;
         cargarBotellas(fecha);
         cargarCortesias(fecha);
+        cargarRankingSemanal();
+        cargarBalanceMensual();
     }
 
     function cargarBotellas(fecha) {
         db.collection("ventas").where("f", "==", fecha).onSnapshot(snap => {
             const tabla = document.getElementById('tabla-botellas');
-            const globalLabel = document.getElementById('global-botellas');
             const miniRankingDiv = document.getElementById('mini-ranking-diario');
-            
-            tabla.innerHTML = "";
-            miniRankingDiv.innerHTML = "";
-            
-            let dataArr = [];
-            let totalGeneral = 0;
-            let mozosHoy = {}; 
+            tabla.innerHTML = ""; miniRankingDiv.innerHTML = ""; registrosDelDia = [];
+            let totalGeneral = 0; let mozosHoy = {}; let dataArr = [];
 
             snap.forEach(doc => {
-                const d = doc.data();
-                const cant = parseInt(d.c) || 0;
-                totalGeneral += cant;
-                
-                // DISTINCIÓN ENTRE RP Y FANTASMA
+                const d = doc.data(); registrosDelDia.push(d);
+                const cant = parseInt(d.c) || 0; totalGeneral += cant;
                 const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
                 const esFantasma = (d.tipo === "FANTASMA" || (d.b && d.b.toUpperCase().includes("FANTASMA")));
-
                 const nombreLimpio = d.b.replace(/ RP/i, "").replace(/ FANTASMA/i, "").trim();
                 
                 dataArr.push({ mozo: d.m, botella: nombreLimpio, cant: cant, esRP: esRP, esFantasma: esFantasma });
-
                 if(!mozosHoy[d.m]) mozosHoy[d.m] = { normal: 0, rp: 0 };
-                
-                // LOGICA DE SUMA MINI RANKING
-                if(esRP) {
-                    mozosHoy[d.m].rp += cant;
-                } else {
-                    // Si es normal O es fantasma, suma como botella normal
-                    mozosHoy[d.m].normal += cant;
-                }
+                if(esRP) mozosHoy[d.m].rp += cant; else mozosHoy[d.m].normal += cant;
             });
 
-            const miniOrdenados = Object.entries(mozosHoy).sort((a,b) => (b[1].normal + b[1].rp) - (a[1].normal + a[1].rp));
-            miniOrdenados.forEach(([nom, st]) => {
-                const txtRP = st.rp > 0 ? ` + ${st.rp}RP` : "";
-                miniRankingDiv.innerHTML += `<div class="mini-chip"><b>${nom}:</b> ${st.normal}${txtRP}</div>`;
+            document.getElementById('global-botellas').innerText = `Total: ${totalGeneral}`;
+            Object.entries(mozosHoy).sort((a,b) => (b[1].normal + b[1].rp) - (a[1].normal + a[1].rp)).forEach(([nom, st]) => {
+                miniRankingDiv.innerHTML += `<div class="mini-chip" onclick="verComandas('${nom}')"><b>${nom}:</b> ${st.normal}${st.rp > 0 ? ' + '+st.rp+'RP' : ''}</div>`;
             });
-
-            dataArr.sort((a, b) => a.mozo.localeCompare(b.mozo));
-            globalLabel.innerText = `Total: ${totalGeneral}`;
 
             let agrupado = [];
             dataArr.forEach(item => {
                 let existe = agrupado.find(x => x.mozo === item.mozo && x.botella === item.botella && x.esRP === item.esRP && x.esFantasma === item.esFantasma);
-                if(existe) {
-                    existe.total += item.cant;
-                } else {
-                    agrupado.push({ mozo: item.mozo, botella: item.botella, total: item.cant, esRP: item.esRP, esFantasma: item.esFantasma });
-                }
+                if(existe) existe.total += item.cant; else agrupado.push({ mozo: item.mozo, botella: item.botella, total: item.cant, esRP: item.esRP, esFantasma: item.esFantasma });
             });
 
             agrupado.forEach(item => {
-                let tag = "";
-                if(item.esRP) tag = `<span class="rp-tag">[RP]</span>`;
-                else if(item.esFantasma) tag = `<span class="f-tag">[F]</span>`;
-                
+                let tag = item.esRP ? '<span class="rp-tag">[RP]</span>' : (item.esFantasma ? '<span class="f-tag">[F]</span>' : '');
                 tabla.innerHTML += `<tr><td><b>${item.total}</b></td><td>${item.mozo}</td><td>${item.botella}${tag}</td></tr>`;
             });
         });
     }
 
+    function verComandas(nombreMozo) {
+        document.getElementById('modalTitulo').innerText = `COMANDAS DE ${nombreMozo}`;
+        const cuerpo = document.getElementById('cuerpoComandas');
+        cuerpo.innerHTML = "";
+        let filtrados = registrosDelDia.filter(r => r.m === nombreMozo).sort((a, b) => (a.co || 0) - (b.co || 0));
+        filtrados.forEach(r => {
+            let tag = r.tipo === "RP" ? '<span class="rp-tag">[RP]</span>' : (r.tipo === "FANTASMA" ? '<span class="f-tag">[F]</span>' : '');
+            cuerpo.innerHTML += `<div class="comanda-item"><span>${r.b} ${tag}</span><span style="color:#d4af37; font-weight:bold;">#${r.co || '--'}</span></div>`;
+        });
+        document.getElementById('modalComandas').style.display = "block";
+    }
+
+    function cerrarModal() { document.getElementById('modalComandas').style.display = "none"; }
+
     function cargarCortesias(fecha) {
         db.collection("cortesias").where("f", "==", fecha).onSnapshot(snap => {
             const tabla = document.getElementById('tabla-cortesias');
             tabla.innerHTML = "";
-            let arr = [];
             snap.forEach(doc => {
                 const d = doc.data();
-                arr.push({ nom: d.n, pro: d.p, cant: parseInt(d.c) || 0 });
-            });
-            arr.sort((a, b) => a.nom.localeCompare(b.nom));
-            arr.forEach(item => {
-                tabla.innerHTML += `<tr><td><b>${item.cant}</b></td><td>${item.nom}</td><td>${item.pro}</td></tr>`;
+                tabla.innerHTML += `<tr><td><b>${d.c}</b></td><td>${d.n}</td><td>${d.p}</td></tr>`;
             });
         });
     }
@@ -197,62 +185,39 @@
     function cargarRankingSemanal() {
         const inputFecha = document.getElementById('filtroSemana').value;
         const fechaBase = new Date(inputFecha + "T12:00:00");
-        const diaSemana = fechaBase.getDay(); 
-        const diff = fechaBase.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1); 
+        const diff = fechaBase.getDate() - fechaBase.getDay() + (fechaBase.getDay() === 0 ? -6 : 1);
         const lunes = new Date(fechaBase.setDate(diff));
-        const domingo = new Date(lunes);
-        domingo.setDate(lunes.getDate() + 6);
-        const fInicio = lunes.toISOString().split('T')[0];
-        const fFin = domingo.toISOString().split('T')[0];
+        const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
         document.getElementById('texto-semana').innerText = `Sumando del ${lunes.toLocaleDateString('es-ES', {day:'2-digit', month:'short'})} al ${domingo.toLocaleDateString('es-ES', {day:'2-digit', month:'short'})}`;
-        renderRanking("ranking-semanal", fInicio, fFin);
+        renderRanking("ranking-semanal", lunes.toISOString().split('T')[0], domingo.toISOString().split('T')[0]);
     }
 
     function cargarBalanceMensual() {
-        const mesSel = document.getElementById('filtroMes').value; 
+        const mesSel = document.getElementById('filtroMes').value;
         const qSel = document.getElementById('filtroQuincena').value;
         let fInicio = `${mesSel}-01`, fFin = `${mesSel}-31`;
-        if(qSel === "q1") fFin = `${mesSel}-15`;
-        else if(qSel === "q2") fInicio = `${mesSel}-16`;
+        if(qSel === "q1") fFin = `${mesSel}-15`; else if(qSel === "q2") fInicio = `${mesSel}-16`;
         renderRanking("ranking-mozos", fInicio, fFin);
     }
 
     async function renderRanking(containerId, fInicio, fFin) {
-        const div = document.getElementById(containerId);
         db.collection("ventas").where("f", ">=", fInicio).where("f", "<=", fFin).onSnapshot(snap => {
-            div.innerHTML = "";
+            const div = document.getElementById(containerId); div.innerHTML = "";
             let balance = {};
             snap.forEach(doc => {
-                const d = doc.data();
-                const mozo = d.m || "Otros";
-                const cant = parseInt(d.c) || 0;
+                const d = doc.data(); const mozo = d.m || "Otros"; const cant = parseInt(d.c) || 0;
                 const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
                 if(!balance[mozo]) balance[mozo] = { botellas: 0, rp: 0 };
-                if(esRP) balance[mozo].rp += cant;
-                else balance[mozo].botellas += cant;
+                if(esRP) balance[mozo].rp += cant; else balance[mozo].botellas += cant;
             });
-            const ordenados = Object.entries(balance).sort((a, b) => (b[1].botellas + b[1].rp) - (a[1].botellas + a[1].rp));
-            if(ordenados.length === 0) {
-                div.innerHTML = "<p style='text-align:center; color:#888; font-size:0.8em;'>Sin datos.</p>";
-                return;
-            }
-            ordenados.forEach(([nombre, stats], index) => {
+            Object.entries(balance).sort((a, b) => (b[1].botellas + b[1].rp) - (a[1].botellas + a[1].rp)).forEach(([nombre, stats], index) => {
                 const medalla = index === 0 ? "🥇" : (index === 1 ? "🥈" : (index === 2 ? "🥉" : ""));
-                div.innerHTML += `
-                    <div class="card-mozo">
-                        <div class="nombre-mozo"><span>${medalla} ${nombre}</span> <span>POS. ${index+1}</span></div>
-                        <div class="stats-mozo">
-                            <div class="stat-item"><span class="stat-val">${stats.botellas}</span><span class="stat-lab">Botellas</span></div>
-                            <div class="stat-item"><span class="stat-val" style="color:#d4af37">${stats.rp}</span><span class="stat-lab">Cortesías RP</span></div>
-                        </div>
-                    </div>`;
+                div.innerHTML += `<div class="card-mozo"><div class="nombre-mozo"><span>${medalla} ${nombre}</span> <span>POS. ${index+1}</span></div><div class="stats-mozo"><div class="stat-item"><span class="stat-val">${stats.botellas}</span><span class="stat-lab">Botellas</span></div><div class="stat-item"><span class="stat-val" style="color:#d4af37">${stats.rp}</span><span class="stat-lab">Cortesías RP</span></div></div></div>`;
             });
         });
     }
 
     cargarTodo();
-    cargarRankingSemanal();
-    cargarBalanceMensual();
 </script>
 </body>
 </html>
