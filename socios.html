@@ -192,7 +192,6 @@
         
         wrapper.innerHTML = mozosOrdenados.map(([nombre, stats], index) => {
             const medalla = index === 0 ? '👑' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : ''));
-            // Usamos .toUpperCase() para que busque WILSON.jpg aunque en la DB sea "Wilson"
             const nombreArchivo = nombre.toUpperCase(); 
             
             return `
@@ -220,7 +219,8 @@
         document.getElementById('mozo-rp-perfil').innerText = s.rp;
         
         const topProd = Object.entries(s.productos).sort((a,b) => b[1] - a[1])[0];
-        document.getElementById('mozo-top-perfil').innerText = `⭐ Botella favorita: ${topProd ? topProd[0] : '---'}`;
+        // CAMBIO DE TEXTO AQUÍ
+        document.getElementById('mozo-top-perfil').innerText = `⭐ Botella más vendida: ${topProd ? topProd[0] : '---'}`;
     }
 
     // --- FUNCIONES ORIGINALES ---
