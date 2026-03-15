@@ -51,7 +51,8 @@
         .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
         .name-tag-perfil { font-size: 0.8em; color: #fff; font-weight: bold; text-transform: uppercase; }
         
-        .info-card-perfil { margin: 15px auto 5px auto; background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 15px; text-align: center; display: none; }
+        /* CUADRO DE PERFIL AJUSTADO */
+        .info-card-perfil { margin: 10px auto 5px auto; background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 10px; text-align: center; display: none; }
         .info-card-perfil .stat-val { font-size: 1.5em; color: #d4af37; }
 
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); }
@@ -70,12 +71,8 @@
         <div class="header-perfil">PERFIL DE MOZOS</div>
         <div id="lista-mozos-perfil" class="staff-wrapper"></div>
         <div id="info-box-perfil" class="info-card-perfil">
-            <div id="mozo-nombre-perfil" style="font-weight: 800; color: #d4af37; font-size: 1.1em; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom:5px;"></div>
-            <div style="display: flex; justify-content: space-around;">
-                <div class="stat-item"><span id="mozo-total-perfil" class="stat-val">0</span><span class="stat-lab">Botellas</span></div>
-                <div class="stat-item"><span id="mozo-rp-perfil" class="stat-val">0</span><span class="stat-lab">RP</span></div>
-            </div>
-            <div id="mozo-top-perfil" style="font-size: 0.75em; color: #aaa; margin-top: 12px; font-style: italic;"></div>
+            <div id="mozo-nombre-perfil" style="font-weight: 800; color: #d4af37; font-size: 1.1em; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom:5px;"></div>
+            <div id="mozo-top-perfil" style="font-size: 0.85em; color: #fff; font-weight: bold;"></div>
         </div>
     </div>
 
@@ -183,11 +180,8 @@
 
     function cargarTodo() {
         const fecha = document.getElementById('filtro').value;
-        
-        // AUTO-CIERRE: Oculta los cuadros desplegados al cambiar de fecha
         document.getElementById('seccion-botellas').style.display = 'none';
         document.getElementById('seccion-cortesias').style.display = 'none';
-
         cargarBotellas(fecha);
         cargarCortesias(fecha);
         cambiarVistaRank('sem');
@@ -235,10 +229,8 @@
         if(!s) return;
         box.style.display = 'block';
         document.getElementById('mozo-nombre-perfil').innerText = nombre.toUpperCase();
-        document.getElementById('mozo-total-perfil').innerText = s.normal;
-        document.getElementById('mozo-rp-perfil').innerText = s.rp;
         const topProd = Object.entries(s.productos).sort((a,b) => b[1] - a[1])[0];
-        document.getElementById('mozo-top-perfil').innerText = `⭐ Top: ${topProd ? topProd[0] : '---'}`;
+        document.getElementById('mozo-top-perfil').innerHTML = `<span style="color:#d4af37; font-size:0.8em; text-transform:uppercase;">Botella que vende mas:</span><br>${topProd ? topProd[0] : '---'}`;
     }
 
     function cargarBotellas(fecha) {
@@ -247,7 +239,6 @@
             const miniRankingDiv = document.getElementById('mini-ranking-diario');
             tabla.innerHTML = ""; miniRankingDiv.innerHTML = ""; registrosDelDia = [];
             let totalGeneral = 0; let mozosHoy = {}; let dataArr = [];
-
             snap.forEach(doc => {
                 const d = doc.data(); registrosDelDia.push(d);
                 const cant = parseInt(d.c) || 0; totalGeneral += cant;
@@ -257,18 +248,15 @@
                 if(!mozosHoy[d.m]) mozosHoy[d.m] = { normal: 0, rp: 0 };
                 if(esRP) mozosHoy[d.m].rp += cant; else mozosHoy[d.m].normal += cant;
             });
-
             document.getElementById('global-botellas').innerText = totalGeneral;
             Object.entries(mozosHoy).sort((a,b) => (b[1].normal + b[1].rp) - (a[1].normal + a[1].rp)).forEach(([nom, st]) => {
                 miniRankingDiv.innerHTML += `<div class="mini-chip" onclick="verComandas('${nom}')"><b>${nom}:</b> ${st.normal}${st.rp > 0 ? ' + '+st.rp+'RP' : ''}</div>`;
             });
-
             let agrupado = [];
             dataArr.forEach(item => {
                 let existe = agrupado.find(x => x.mozo === item.mozo && x.botella === item.botella && x.esRP === item.esRP);
                 if(existe) existe.total += item.cant; else agrupado.push({ mozo: item.mozo, botella: item.botella, total: item.cant, esRP: item.esRP });
             });
-
             agrupado.sort((a, b) => a.mozo.localeCompare(b.mozo)).forEach(item => {
                 let tag = item.esRP ? '<span class="rp-tag">[RP]</span>' : '';
                 tabla.innerHTML += `<tr><td><b>${item.total}</b></td><td>${item.mozo}</td><td>${item.botella}${tag}</td></tr>`;
@@ -306,12 +294,9 @@
         const diff = fechaBase.getDate() - fechaBase.getDay() + (fechaBase.getDay() === 0 ? -6 : 1);
         const lunes = new Date(fechaBase.setDate(diff));
         const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
-        
-        // FORMATO DE FECHA CORTO: Lun 09 a Dom 15
         const diasNom = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
         const f1 = `${diasNom[lunes.getDay()]} ${lunes.getDate().toString().padStart(2, '0')}`;
         const f2 = `${diasNom[domingo.getDay()]} ${domingo.getDate().toString().padStart(2, '0')}`;
-        
         document.getElementById('texto-semana').innerText = `Semana: ${f1} a ${f2}`;
         renderRanking("ranking-dinamico", lunes.toISOString().split('T')[0], domingo.toISOString().split('T')[0]);
     }
@@ -340,7 +325,6 @@
             });
         });
     }
-
     cargarTodo();
 </script>
 </body>
