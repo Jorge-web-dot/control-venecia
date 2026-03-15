@@ -11,15 +11,25 @@
         .container { max-width: 600px; margin: auto; background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #333; }
         h1 { text-align:center; color:#d4af37; font-size:1.3em; margin-bottom:20px; text-transform: uppercase; }
         h2 { text-align: center; color: #d4af37; text-transform: uppercase; font-size: 1em; margin: 25px 0 10px 0; border-bottom: 1px solid #d4af37; padding-bottom: 5px; position: relative; }
-        .total-global-tag { position: absolute; right: 0; bottom: 5px; font-size: 0.6em; background: #d4af37; color: black; padding: 2px 6px; border-radius: 4px; }
+        
         .input-group { background: #222; padding: 10px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #d4af37; }
         label { display: block; font-size: 0.75em; color: #888; margin-bottom: 5px; text-transform: uppercase; }
-        input, select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #333; background: #111; color: white; box-sizing: border-box; font-size: 1em; }
-        .tabla-resumen { width: 100%; border-collapse: collapse; font-size: 0.8em; margin-top: 10px; background: #111; }
+        input, select { width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #333; background: #111; color: white; box-sizing: border-box; font-size: 0.9em; }
+        
+        /* BOTONES INTERACTIVOS */
+        .btn-toggle { width: 100%; padding: 12px; background: #d4af37; color: black; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin: 8px 0; font-size: 0.85em; display: flex; justify-content: space-between; align-items: center; }
+        .btn-toggle.cortesia { background: #444; color: #d4af37; border: 1px solid #d4af37; }
+        .hidden-content { display: none; margin-top: 10px; animation: fadeIn 0.3s; }
+        
+        /* RANKING SELECTOR */
+        .selector-ranking { display: flex; gap: 5px; margin-bottom: 15px; }
+        .btn-rank { flex: 1; padding: 8px; background: #222; border: 1px solid #444; color: #888; border-radius: 5px; font-size: 0.7em; font-weight: bold; cursor: pointer; }
+        .btn-rank.active { background: #d4af37; color: black; border-color: #d4af37; }
+
+        .tabla-resumen { width: 100%; border-collapse: collapse; font-size: 0.8em; background: #111; }
         .tabla-resumen th { background: #d4af37; color: black; padding: 8px; border: 1px solid #333; }
         .tabla-resumen td { padding: 8px; border: 1px solid #333; text-align: center; }
         
-        .f-tag { color: #ff4444; font-weight: bold; margin-left: 5px; } 
         .rp-tag { color: #d4af37; font-weight: bold; margin-left: 5px; } 
         
         .mini-ranking { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 15px; font-size: 0.85em; }
@@ -31,105 +41,106 @@
         .stat-item { text-align: center; }
         .stat-val { display: block; font-size: 1.1em; color: white; font-weight: bold; }
         .stat-lab { font-size: 0.65em; color: #888; text-transform: uppercase; }
-        .rango-semana { text-align: center; font-size: 0.8em; color: #d4af37; margin-bottom: 10px; font-style: italic; }
 
-        /* ESTILOS DEL CARRUSEL INTEGRADO */
-        .ranking-container-perfil { 
-            background: linear-gradient(145deg, #151515, #050505); 
-            border-radius: 20px; border: 1px solid #222; padding: 15px;
-            width: 100%; box-sizing: border-box; margin: 10px auto 25px auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-        }
-        .header-perfil { color: #d4af37; font-size: 0.7em; font-weight: 800; letter-spacing: 3px; margin-bottom: 20px; text-transform: uppercase; text-align: left; }
-        .staff-wrapper { display: flex; overflow-x: auto; gap: 20px; padding-bottom: 10px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-        .staff-wrapper::-webkit-scrollbar { display: none; }
-        .profile-card { text-align: center; min-width: 70px; cursor: pointer; position: relative; }
-        .avatar-container { position: relative; width: 62px; height: 62px; margin: 0 auto 8px auto; }
-        .avatar-circle { width: 100%; height: 100%; border-radius: 50%; border: 2px solid #222; overflow: hidden; background: #111; display: flex; align-items: center; justify-content: center; }
+        /* PERFILES MEJORADOS */
+        .ranking-container-perfil { background: linear-gradient(145deg, #151515, #050505); border-radius: 20px; border: 1px solid #222; padding: 15px; margin-bottom: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        .header-perfil { color: #d4af37; font-size: 0.75em; font-weight: 800; letter-spacing: 3px; margin-bottom: 15px; text-transform: uppercase; }
+        .staff-wrapper { display: flex; overflow-x: auto; gap: 15px; padding-bottom: 10px; scrollbar-width: none; }
+        .profile-card { text-align: center; min-width: 85px; cursor: pointer; }
+        .avatar-circle { width: 70px; height: 70px; border-radius: 50%; border: 2px solid #333; overflow: hidden; background: #111; margin: 0 auto 8px auto; }
         .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
-        .rank-0 .avatar-circle { border-color: #d4af37; box-shadow: 0 0 15px rgba(212, 175, 55, 0.3); }
-        .badge-perfil { position: absolute; top: -5px; right: -5px; font-size: 18px; z-index: 2; }
-        .name-tag-perfil { font-size: 0.65em; font-weight: 600; color: #777; text-transform: uppercase; }
-        .info-card-perfil { margin: 15px auto 5px auto; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 12px; padding: 10px; text-align: center; display: none; width: 90%; }
-        .top-product-perfil { font-size: 0.65em; color: #aaa; margin-top: 10px; padding-top: 8px; border-top: 1px solid #222; font-style: italic; }
+        .name-tag-perfil { font-size: 0.8em; color: #fff; font-weight: bold; text-transform: uppercase; }
+        
+        .info-card-perfil { margin: 15px auto 5px auto; background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 15px; text-align: center; display: none; }
+        .info-card-perfil .stat-val { font-size: 1.5em; color: #d4af37; }
 
-        /* MODAL DE COMANDAS */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); }
         .modal-content { background: #1a1a1a; margin: 15% auto; padding: 20px; border: 1px solid #d4af37; width: 85%; max-width: 400px; border-radius: 12px; }
-        .comanda-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; font-size: 0.9em; }
-        .btn-cerrar { background: #d4af37; color: black; border: none; padding: 10px; width: 100%; border-radius: 8px; font-weight: bold; margin-top: 15px; cursor: pointer; }
+        .btn-cerrar { background: #d4af37; color: black; border: none; padding: 10px; width: 100%; border-radius: 8px; font-weight: bold; margin-top: 15px; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>PANEL DE CONTROL VENECIA</h1>
+    <h1>CONTROL VENECIA</h1>
     
     <div class="ranking-container-perfil">
         <div class="header-perfil">PERFIL DE MOZOS</div>
         <div id="lista-mozos-perfil" class="staff-wrapper"></div>
-        
         <div id="info-box-perfil" class="info-card-perfil">
-            <div id="mozo-nombre-perfil" style="font-weight: 800; color: #d4af37; font-size: 0.85em; margin-bottom: 8px;"></div>
-            <div style="display: flex; justify-content: space-around; align-items: center;">
-                <div class="stat-item">
-                    <span id="mozo-total-perfil" class="stat-val">0</span>
-                    <span class="stat-lab">Botellas</span>
-                </div>
-                <div style="width: 1px; height: 18px; background: #333;"></div>
-                <div class="stat-item">
-                    <span id="mozo-rp-perfil" class="stat-val" style="color:#d4af37">0</span>
-                    <span class="stat-lab">RP</span>
-                </div>
+            <div id="mozo-nombre-perfil" style="font-weight: 800; color: #d4af37; font-size: 1.1em; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom:5px;"></div>
+            <div style="display: flex; justify-content: space-around;">
+                <div class="stat-item"><span id="mozo-total-perfil" class="stat-val">0</span><span class="stat-lab">Botellas</span></div>
+                <div class="stat-item"><span id="mozo-rp-perfil" class="stat-val">0</span><span class="stat-lab">RP</span></div>
             </div>
-            <div id="mozo-top-perfil" class="top-product-perfil"></div>
+            <div id="mozo-top-perfil" style="font-size: 0.75em; color: #aaa; margin-top: 12px; font-style: italic;"></div>
         </div>
     </div>
 
     <div class="input-group">
-        <label>Ver Movimiento del Día:</label>
+        <label>Fecha de Consulta:</label>
         <input type="date" id="filtro" onchange="cargarTodo()">
     </div>
-
     <div id="mini-ranking-diario" class="mini-ranking"></div>
 
-    <h2>Botellas Entregadas (Hoy) <span id="global-botellas" class="total-global-tag">Total: 0</span></h2>
-    <table class="tabla-resumen">
-        <thead><tr><th>CANT</th><th>MOZO / CLIENTE</th><th>PRODUCTO</th></tr></thead>
-        <tbody id="tabla-botellas"></tbody>
-    </table>
-
-    <h2>Cortesías Entregadas (Hoy)</h2>
-    <table class="tabla-resumen">
-        <thead><tr><th>CANT</th><th>ASIGNADO A</th><th>PRODUCTO</th></tr></thead>
-        <tbody id="tabla-cortesias"></tbody>
-    </table>
-
-    <h2 style="background:#d4af37; color:black; padding:5px; margin-top:40px;">Ranking Semanal</h2>
-    <div class="input-group">
-        <label>Seleccionar Semana:</label>
-        <input type="date" id="filtroSemana" onchange="cargarRankingSemanal()">
+    <button class="btn-toggle" onclick="toggleSeccion('seccion-botellas')">
+        <span>👁️ VER SALIDA DE BOTELLAS DETALLADO</span>
+        <b id="global-botellas">0</b>
+    </button>
+    <div id="seccion-botellas" class="hidden-content">
+        <h2>Detalle de Entregas</h2>
+        <table class="tabla-resumen">
+            <thead><tr><th>CANT</th><th>MOZO / CLIENTE</th><th>PRODUCTO</th></tr></thead>
+            <tbody id="tabla-botellas"></tbody>
+        </table>
     </div>
-    <div id="texto-semana" class="rango-semana"></div>
-    <div id="ranking-semanal"></div>
 
-    <h2 style="background:#d4af37; color:black; padding:5px; margin-top:40px;">Ranking Mensual de Mozos</h2>
-    <div class="input-group">
-        <label>Seleccionar Mes:</label>
-        <input type="month" id="filtroMes" onchange="cargarBalanceMensual()">
-        <label style="margin-top:10px;">Ver Periodo:</label>
-        <select id="filtroQuincena" onchange="cargarBalanceMensual()">
-            <option value="mes">Mes Completo</option>
-            <option value="q1">1ra Quincena (1 - 15)</option>
-            <option value="q2">2da Quincena (16 - Fin)</option>
-        </select>
+    <button class="btn-toggle cortesia" onclick="toggleSeccion('seccion-cortesias')">
+        <span>🎁 VER CORTESÍAS DETALLADO</span>
+        <span id="label-cortesias">VER</span>
+    </button>
+    <div id="seccion-cortesias" class="hidden-content">
+        <h2>Cortesías Entregadas</h2>
+        <table class="tabla-resumen">
+            <thead><tr><th>CANT</th><th>ASIGNADO A</th><th>PRODUCTO</th></tr></thead>
+            <tbody id="tabla-cortesias"></tbody>
+        </table>
     </div>
-    <div id="ranking-mozos"></div>
+
+    <h2 style="margin-top:30px;">RANKING DE MOZOS</h2>
+    <div class="selector-ranking">
+        <button class="btn-rank active" id="btn-sem" onclick="cambiarVistaRank('sem')">SEMANA</button>
+        <button class="btn-rank" id="btn-qui" onclick="cambiarVistaRank('qui')">QUINCENA</button>
+        <button class="btn-rank" id="btn-mes" onclick="cambiarVistaRank('mes')">MES</button>
+    </div>
+
+    <div id="controles-ranking">
+        <div id="ctrl-sem" class="input-group">
+            <label>Elegir Semana:</label>
+            <input type="date" id="filtroSemana" onchange="cargarRankingSemanal()">
+            <div id="texto-semana" style="text-align:center; font-size:0.85em; color:#d4af37; margin-top:10px; font-style:italic; font-weight: bold;"></div>
+        </div>
+        <div id="ctrl-mes" class="input-group" style="display:none;">
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1"><label>Mes:</label><input type="month" id="filtroMes" onchange="cargarBalanceMensual()"></div>
+                <div id="box-qui" style="flex:1; display:none;"><label>Q:</label>
+                    <select id="filtroQuincena" onchange="cargarBalanceMensual()">
+                        <option value="q1">1ra (1-15)</option>
+                        <option value="q2">2da (16-Fin)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="ranking-dinamico"></div>
 </div>
 
 <div id="modalComandas" class="modal">
     <div class="modal-content">
-        <h3 id="modalTitulo" style="color:#d4af37; margin-top:0; text-align:center;"></h3>
+        <h3 id="modalTitulo" style="color:#d4af37; text-align:center;"></h3>
         <div id="cuerpoComandas"></div>
         <button class="btn-cerrar" onclick="cerrarModal()">CERRAR</button>
     </div>
@@ -155,16 +166,34 @@
     let registrosDelDia = [];
     let statsGlobalesPerfiles = {}; 
 
+    function toggleSeccion(id) {
+        const content = document.getElementById(id);
+        const estaAbierto = content.style.display === 'block';
+        content.style.display = estaAbierto ? 'none' : 'block';
+    }
+
+    function cambiarVistaRank(tipo) {
+        document.querySelectorAll('.btn-rank').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + tipo).classList.add('active');
+        document.getElementById('ctrl-sem').style.display = (tipo === 'sem') ? 'block' : 'none';
+        document.getElementById('ctrl-mes').style.display = (tipo !== 'sem') ? 'block' : 'none';
+        document.getElementById('box-qui').style.display = (tipo === 'qui') ? 'block' : 'none';
+        if(tipo === 'sem') cargarRankingSemanal(); else cargarBalanceMensual();
+    }
+
     function cargarTodo() {
         const fecha = document.getElementById('filtro').value;
+        
+        // AUTO-CIERRE: Oculta los cuadros desplegados al cambiar de fecha
+        document.getElementById('seccion-botellas').style.display = 'none';
+        document.getElementById('seccion-cortesias').style.display = 'none';
+
         cargarBotellas(fecha);
         cargarCortesias(fecha);
-        cargarRankingSemanal();
-        cargarBalanceMensual();
+        cambiarVistaRank('sem');
         actualizarCarruselPerfiles(); 
     }
 
-    // --- LÓGICA DEL CARRUSEL DE PERFILES ---
     function actualizarCarruselPerfiles() {
         const mesActual = document.getElementById('filtroMes').value;
         db.collection("ventas").where("f", ">=", `${mesActual}-01`).where("f", "<=", `${mesActual}-31`).onSnapshot(snap => {
@@ -172,12 +201,11 @@
             snap.forEach(doc => {
                 const d = doc.data(); const mozo = d.m || "Otros"; const cant = parseInt(d.c) || 0;
                 const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
-                const botella = d.b ? d.b.replace(/ RP/i, "").trim() : "S/N";
-
                 if(!data[mozo]) data[mozo] = { normal: 0, rp: 0, productos: {} };
                 if(esRP) data[mozo].rp += cant;
                 else {
                     data[mozo].normal += cant;
+                    const botella = d.b ? d.b.replace(/ RP/i, "").trim() : "S/N";
                     data[mozo].productos[botella] = (data[mozo].productos[botella] || 0) + cant;
                 }
             });
@@ -189,22 +217,15 @@
     function renderizarCarrusel(data) {
         const wrapper = document.getElementById('lista-mozos-perfil');
         const mozosOrdenados = Object.entries(data).sort((a,b) => b[1].normal - a[1].normal);
-        
         wrapper.innerHTML = mozosOrdenados.map(([nombre, stats], index) => {
             const medalla = index === 0 ? '👑' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : ''));
-            const nombreArchivo = nombre.toUpperCase(); 
-            
             return `
-                <div class="profile-card rank-${index}" onclick="verDetallePerfil('${nombre}')">
-                    <div class="avatar-container">
-                        ${medalla ? `<span class="badge-perfil">${medalla}</span>` : ''}
-                        <div class="avatar-circle">
-                            <img src="fotos/${nombreArchivo}.jpg" onerror="this.src='https://ui-avatars.com/api/?name=${nombre}&background=111&color=d4af37&bold=true'">
-                        </div>
+                <div class="profile-card" onclick="verDetallePerfil('${nombre}')">
+                    <div class="avatar-circle">
+                        <img src="fotos/${nombre.toUpperCase()}.jpg" onerror="this.src='https://ui-avatars.com/api/?name=${nombre}&background=111&color=d4af37&bold=true'">
                     </div>
-                    <div class="name-tag-perfil">${nombre}</div>
-                </div>
-            `;
+                    <div class="name-tag-perfil">${medalla} ${nombre}</div>
+                </div>`;
         }).join('');
     }
 
@@ -212,18 +233,14 @@
         const box = document.getElementById('info-box-perfil');
         const s = statsGlobalesPerfiles[nombre];
         if(!s) return;
-        
         box.style.display = 'block';
         document.getElementById('mozo-nombre-perfil').innerText = nombre.toUpperCase();
         document.getElementById('mozo-total-perfil').innerText = s.normal;
         document.getElementById('mozo-rp-perfil').innerText = s.rp;
-        
         const topProd = Object.entries(s.productos).sort((a,b) => b[1] - a[1])[0];
-        // CAMBIO DE TEXTO AQUÍ
-        document.getElementById('mozo-top-perfil').innerText = `⭐ Botella más vendida: ${topProd ? topProd[0] : '---'}`;
+        document.getElementById('mozo-top-perfil').innerText = `⭐ Top: ${topProd ? topProd[0] : '---'}`;
     }
 
-    // --- FUNCIONES ORIGINALES ---
     function cargarBotellas(fecha) {
         db.collection("ventas").where("f", "==", fecha).onSnapshot(snap => {
             const tabla = document.getElementById('tabla-botellas');
@@ -235,27 +252,25 @@
                 const d = doc.data(); registrosDelDia.push(d);
                 const cant = parseInt(d.c) || 0; totalGeneral += cant;
                 const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
-                const esFantasma = (d.tipo === "FANTASMA" || (d.b && d.b.toUpperCase().includes("FANTASMA")));
-                const nombreLimpio = d.b.replace(/ RP/i, "").replace(/ FANTASMA/i, "").trim();
-                
-                dataArr.push({ mozo: d.m, botella: nombreLimpio, cant: cant, esRP: esRP, esFantasma: esFantasma });
+                const nombreLimpio = d.b.replace(/ RP/i, "").trim();
+                dataArr.push({ mozo: d.m, botella: nombreLimpio, cant: cant, esRP: esRP });
                 if(!mozosHoy[d.m]) mozosHoy[d.m] = { normal: 0, rp: 0 };
                 if(esRP) mozosHoy[d.m].rp += cant; else mozosHoy[d.m].normal += cant;
             });
 
-            document.getElementById('global-botellas').innerText = `Total: ${totalGeneral}`;
+            document.getElementById('global-botellas').innerText = totalGeneral;
             Object.entries(mozosHoy).sort((a,b) => (b[1].normal + b[1].rp) - (a[1].normal + a[1].rp)).forEach(([nom, st]) => {
                 miniRankingDiv.innerHTML += `<div class="mini-chip" onclick="verComandas('${nom}')"><b>${nom}:</b> ${st.normal}${st.rp > 0 ? ' + '+st.rp+'RP' : ''}</div>`;
             });
 
             let agrupado = [];
             dataArr.forEach(item => {
-                let existe = agrupado.find(x => x.mozo === item.mozo && x.botella === item.botella && x.esRP === item.esRP && x.esFantasma === item.esFantasma);
-                if(existe) existe.total += item.cant; else agrupado.push({ mozo: item.mozo, botella: item.botella, total: item.cant, esRP: item.esRP, esFantasma: item.esFantasma });
+                let existe = agrupado.find(x => x.mozo === item.mozo && x.botella === item.botella && x.esRP === item.esRP);
+                if(existe) existe.total += item.cant; else agrupado.push({ mozo: item.mozo, botella: item.botella, total: item.cant, esRP: item.esRP });
             });
 
-            agrupado.forEach(item => {
-                let tag = item.esRP ? '<span class="rp-tag">[RP]</span>' : (item.esFantasma ? '<span class="f-tag">[F]</span>' : '');
+            agrupado.sort((a, b) => a.mozo.localeCompare(b.mozo)).forEach(item => {
+                let tag = item.esRP ? '<span class="rp-tag">[RP]</span>' : '';
                 tabla.innerHTML += `<tr><td><b>${item.total}</b></td><td>${item.mozo}</td><td>${item.botella}${tag}</td></tr>`;
             });
         });
@@ -265,10 +280,9 @@
         document.getElementById('modalTitulo').innerText = `COMANDAS DE ${nombreMozo}`;
         const cuerpo = document.getElementById('cuerpoComandas');
         cuerpo.innerHTML = "";
-        let filtrados = registrosDelDia.filter(r => r.m === nombreMozo).sort((a, b) => (a.co || 0) - (b.co || 0));
+        let filtrados = registrosDelDia.filter(r => r.m === nombreMozo);
         filtrados.forEach(r => {
-            let tag = r.tipo === "RP" ? '<span class="rp-tag">[RP]</span>' : (r.tipo === "FANTASMA" ? '<span class="f-tag">[F]</span>' : '');
-            cuerpo.innerHTML += `<div class="comanda-item"><span>${r.b} ${tag}</span><span style="color:#d4af37; font-weight:bold;">#${r.co || '--'}</span></div>`;
+            cuerpo.innerHTML += `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #222;"><span>${r.b}</span><span style="color:#d4af37;">#${r.co || '--'}</span></div>`;
         });
         document.getElementById('modalComandas').style.display = "block";
     }
@@ -292,16 +306,22 @@
         const diff = fechaBase.getDate() - fechaBase.getDay() + (fechaBase.getDay() === 0 ? -6 : 1);
         const lunes = new Date(fechaBase.setDate(diff));
         const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
-        document.getElementById('texto-semana').innerText = `Sumando del ${lunes.toLocaleDateString('es-ES', {day:'2-digit', month:'short'})} al ${domingo.toLocaleDateString('es-ES', {day:'2-digit', month:'short'})}`;
-        renderRanking("ranking-semanal", lunes.toISOString().split('T')[0], domingo.toISOString().split('T')[0]);
+        
+        // FORMATO DE FECHA CORTO: Lun 09 a Dom 15
+        const diasNom = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+        const f1 = `${diasNom[lunes.getDay()]} ${lunes.getDate().toString().padStart(2, '0')}`;
+        const f2 = `${diasNom[domingo.getDay()]} ${domingo.getDate().toString().padStart(2, '0')}`;
+        
+        document.getElementById('texto-semana').innerText = `Semana: ${f1} a ${f2}`;
+        renderRanking("ranking-dinamico", lunes.toISOString().split('T')[0], domingo.toISOString().split('T')[0]);
     }
 
     function cargarBalanceMensual() {
         const mesSel = document.getElementById('filtroMes').value;
-        const qSel = document.getElementById('filtroQuincena').value;
+        const qSel = document.querySelector('.btn-rank.active').id === 'btn-qui' ? document.getElementById('filtroQuincena').value : 'mes';
         let fInicio = `${mesSel}-01`, fFin = `${mesSel}-31`;
         if(qSel === "q1") fFin = `${mesSel}-15`; else if(qSel === "q2") fInicio = `${mesSel}-16`;
-        renderRanking("ranking-mozos", fInicio, fFin);
+        renderRanking("ranking-dinamico", fInicio, fFin);
     }
 
     async function renderRanking(containerId, fInicio, fFin) {
@@ -316,7 +336,7 @@
             });
             Object.entries(balance).sort((a, b) => (b[1].botellas + b[1].rp) - (a[1].botellas + a[1].rp)).forEach(([nombre, stats], index) => {
                 const medalla = index === 0 ? "🥇" : (index === 1 ? "🥈" : (index === 2 ? "🥉" : ""));
-                div.innerHTML += `<div class="card-mozo"><div class="nombre-mozo"><span>${medalla} ${nombre}</span> <span>POS. ${index+1}</span></div><div class="stats-mozo"><div class="stat-item"><span class="stat-val">${stats.botellas}</span><span class="stat-lab">Botellas</span></div><div class="stat-item"><span class="stat-val" style="color:#d4af37">${stats.rp}</span><span class="stat-lab">Cortesías RP</span></div></div></div>`;
+                div.innerHTML += `<div class="card-mozo"><div class="nombre-mozo"><span>${medalla} ${nombre}</span> <span>POS. ${index+1}</span></div><div class="stats-mozo"><div class="stat-item"><span class="stat-val">${stats.botellas}</span><span class="stat-lab">Botellas</span></div><div class="stat-item"><span class="stat-val" style="color:#d4af37">${stats.rp}</span><span class="stat-lab">RP</span></div></div></div>`;
             });
         });
     }
