@@ -16,12 +16,10 @@
         label { display: block; font-size: 0.75em; color: #888; margin-bottom: 5px; text-transform: uppercase; }
         input, select { width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #333; background: #111; color: white; box-sizing: border-box; font-size: 0.9em; }
         
-        /* BOTONES INTERACTIVOS */
         .btn-toggle { width: 100%; padding: 12px; background: #d4af37; color: black; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin: 8px 0; font-size: 0.85em; display: flex; justify-content: space-between; align-items: center; }
         .btn-toggle.cortesia { background: #444; color: #d4af37; border: 1px solid #d4af37; }
         .hidden-content { display: none; margin-top: 10px; animation: fadeIn 0.3s; }
         
-        /* RANKING SELECTOR */
         .selector-ranking { display: flex; gap: 5px; margin-bottom: 15px; }
         .btn-rank { flex: 1; padding: 8px; background: #222; border: 1px solid #444; color: #888; border-radius: 5px; font-size: 0.7em; font-weight: bold; cursor: pointer; }
         .btn-rank.active { background: #d4af37; color: black; border-color: #d4af37; }
@@ -42,7 +40,6 @@
         .stat-val { display: block; font-size: 1.1em; color: white; font-weight: bold; }
         .stat-lab { font-size: 0.65em; color: #888; text-transform: uppercase; }
 
-        /* PERFILES MEJORADOS */
         .ranking-container-perfil { background: linear-gradient(145deg, #151515, #050505); border-radius: 20px; border: 1px solid #222; padding: 15px; margin-bottom: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
         .header-perfil { color: #d4af37; font-size: 0.75em; font-weight: 800; letter-spacing: 3px; margin-bottom: 15px; text-transform: uppercase; }
         .staff-wrapper { display: flex; overflow-x: auto; gap: 15px; padding-bottom: 10px; scrollbar-width: none; }
@@ -51,7 +48,6 @@
         .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
         .name-tag-perfil { font-size: 0.8em; color: #fff; font-weight: bold; text-transform: uppercase; }
         
-        /* CUADRO DE PERFIL AJUSTADO */
         .info-card-perfil { margin: 10px auto 5px auto; background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 10px; text-align: center; display: none; }
         .info-card-perfil .stat-val { font-size: 1.5em; color: #d4af37; }
 
@@ -242,9 +238,14 @@
             snap.forEach(doc => {
                 const d = doc.data(); registrosDelDia.push(d);
                 const cant = parseInt(d.c) || 0; totalGeneral += cant;
-                const esRP = (d.tipo === "RP" || (d.b && d.b.toUpperCase().includes("RP")));
-                const nombreLimpio = d.b.replace(/ RP/i, "").trim();
-                dataArr.push({ mozo: d.m, botella: nombreLimpio, cant: cant, esRP: esRP });
+                
+                // Detectar RP y FANTASMA desde Firebase
+                const esRP = (d.tipo === "RP");
+                const esFantasma = (d.tipo === "FANTASMA");
+                
+                const nombreLimpio = d.b ? d.b.replace(/ RP/i, "").trim() : "S/N";
+                dataArr.push({ mozo: d.m, botella: nombreLimpio, cant: cant, esRP: esRP, esFantasma: esFantasma });
+                
                 if(!mozosHoy[d.m]) mozosHoy[d.m] = { normal: 0, rp: 0 };
                 if(esRP) mozosHoy[d.m].rp += cant; else mozosHoy[d.m].normal += cant;
             });
@@ -254,11 +255,13 @@
             });
             let agrupado = [];
             dataArr.forEach(item => {
-                let existe = agrupado.find(x => x.mozo === item.mozo && x.botella === item.botella && x.esRP === item.esRP);
-                if(existe) existe.total += item.cant; else agrupado.push({ mozo: item.mozo, botella: item.botella, total: item.cant, esRP: item.esRP });
+                let existe = agrupado.find(x => x.mozo === item.mozo && x.botella === item.botella && x.esRP === item.esRP && x.esFantasma === item.esFantasma);
+                if(existe) existe.total += item.cant; else agrupado.push({ mozo: item.mozo, botella: item.botella, total: item.cant, esRP: item.esRP, esFantasma: item.esFantasma });
             });
             agrupado.sort((a, b) => a.mozo.localeCompare(b.mozo)).forEach(item => {
-                let tag = item.esRP ? '<span class="rp-tag">[RP]</span>' : '';
+                let tag = "";
+                if(item.esRP) tag = '<span class="rp-tag">[RP]</span>';
+                if(item.esFantasma) tag = '<span style="color:#ff4444; font-weight:bold; margin-left:5px;">[F]</span>';
                 tabla.innerHTML += `<tr><td><b>${item.total}</b></td><td>${item.mozo}</td><td>${item.botella}${tag}</td></tr>`;
             });
         });
@@ -270,7 +273,15 @@
         cuerpo.innerHTML = "";
         let filtrados = registrosDelDia.filter(r => r.m === nombreMozo);
         filtrados.forEach(r => {
-            cuerpo.innerHTML += `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #222;"><span>${r.b}</span><span style="color:#d4af37;">#${r.co || '--'}</span></div>`;
+            // Etiquetas para el modal
+            let tagModal = "";
+            if(r.tipo === "RP") tagModal = ' <b style="color:#d4af37;">[RP]</b>';
+            if(r.tipo === "FANTASMA") tagModal = ' <b style="color:#ff4444;">[F]</b>';
+
+            cuerpo.innerHTML += `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #222;">
+                <span>${r.b}${tagModal}</span>
+                <span style="color:#d4af37;">#${r.co || '--'}</span>
+            </div>`;
         });
         document.getElementById('modalComandas').style.display = "block";
     }
