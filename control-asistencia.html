@@ -3,65 +3,599 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control - Venecia</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Sistema de Registros Centralizado - VENECIA</title>
     <style>
-        body { background: #f4f7f6; padding: 20px; }
-        .card { border-radius: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border: none; margin-bottom: 20px; }
-        .tardanza { color: #d9534f; font-weight: bold; }
-        .puntual { color: #5cb85c; font-weight: bold; }
+        /* ESTILOS DEL RECIPIENTE PRINCIPAL */
+        :root {
+            --color-fondo: #000000;
+            --color-principal: #1a1a1a;
+            --color-acentuado: #d4af37; /* Dorado Venecia */
+            --blanco: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--color-fondo);
+            color: white;
+        }
+
+        header {
+            background-color: #111;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            position: sticky;
+            top: 0;
+            z-index: 2000;
+            border-bottom: 1px solid #222;
+        }
+
+        nav {
+            display: flex;
+            justify-content: center;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: #777;
+            padding: 15px 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-btn:hover {
+            color: var(--color-acentuado);
+        }
+
+        .tab-btn.active {
+            color: var(--color-acentuado);
+            border-bottom: 3px solid var(--color-acentuado);
+        }
+
+        .main-container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        .tab-content {
+            display: none; 
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .seccion-interna {
+            padding-top: 10px;
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <h2 class="text-center mb-4">⚙️ Gestión de Personal</h2>
-    
-    <div class="card p-3">
-        <h5>Añadir Trabajador</h5>
-        <div class="input-group mb-3">
-            <input type="text" id="nombreT" class="form-control" placeholder="Nombre completo">
-            <button class="btn btn-primary" onclick="agregar()">Agregar</button>
-        </div>
-        <div id="lista" class="d-flex flex-wrap gap-2"></div>
-    </div>
 
-    <div class="card p-3">
-        <h5>Asistencias de Hoy</h5>
-        <table class="table">
-            <thead><tr><th>Nombre</th><th>Hora</th><th>Estado</th></tr></thead>
-            <tbody id="tabla"></tbody>
-        </table>
-    </div>
-</div>
+    <header>
+        <nav>
+            <button class="tab-btn active" onclick="changeTab(event, 'botellas')">REGISTRO DE BOTELLAS</button>
+            <button class="tab-btn" onclick="changeTab(event, 'piscinas')">REGISTRO DE PISCINAS</button>
+            <button class="tab-btn" onclick="changeTab(event, 'cortesias')">REGISTRO DE CORTESÍAS</button>
+        </nav>
+    </header>
 
-<script>
-    // TU LINK CORREGIDO SEGÚN LA FOTO
-    const firebaseConfig = { databaseURL: "https://venecia-control-default-rtdb.firebaseio.com/" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    <main class="main-container">
+        
+        <section id="botellas" class="tab-content active">
+            <div class="seccion-interna">
+                <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+                <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+                <style>
+                    .card-botellas { background: #111; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.8); max-width: 450px; margin: auto; border: 1px solid #222; }
+                    .nombre-local { text-align: center; color: #d4af37; font-size: 1.8em; font-weight: bold; letter-spacing: 2px; margin-bottom: 5px; }
+                    .tit-b { text-align: center; color: #28a745; font-size: 1em; border-bottom: 1px solid #222; padding-bottom: 8px; margin: 0 0 10px 0; }
+                    .lbl-b { display: block; margin-top: 8px; color: #777; font-size: 12px; }
+                    .sel-b, .inp-b, .btn-b { width: 100%; padding: 12px; margin-top: 4px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: white; font-size: 15px; box-sizing: border-box; }
+                    .btn-b { border: none; font-weight: bold; cursor: pointer; }
+                    .btn-add-b { background: #28a745; margin-top: 15px; }
+                    .btn-nav-b { background: #007bff; margin-top: 12px; }
+                    .oculto-b { display: none !important; }
+                    .total-general-b { background: #28a745; color: white; padding: 8px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 10px; font-size: 14px; border: 1px solid #1e7e34; }
+                    .mozo-header-b { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; margin-bottom: 8px; padding-bottom: 3px; }
+                    .total-mozo-b { background: #d4af37; color: black; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+                    .mozo-container-b { background: #161616; padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #d4af37; }
+                    .mozo-nombre-b { color: #d4af37; font-size: 0.95em; font-weight: bold; text-transform: uppercase; }
+                    .cat-box-b { margin-bottom: 5px; padding: 5px; border-radius: 4px; background: #222; }
+                    .cat-titulo-b { font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 3px; }
+                    .botella-item-b { display: flex; justify-content: space-between; align-items: center; font-size: 14px; padding: 2px 0; border-bottom: 1px solid #2a2a2a; }
+                    .btn-del-x-b { background: #dc3545; color: white; padding: 2px 8px; font-size: 10px; border-radius: 4px; width: auto; margin: 0; border:none; }
+                    .filtro-fecha-b { background: #1a1a1a; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333; }
+                    .input-comanda-b { border: 1px solid #d4af37 !important; margin-top: 10px; background: #1a1a1a; color: #d4af37; font-weight: bold; }
+                </style>
+                <div id="p-login" class="card-botellas">
+                    <div class="nombre-local">VENECIA</div>
+                    <div class="tit-b">ACCESO</div>
+                    <input type="password" id="pass-input" class="inp-b" placeholder="Clave...">
+                    <button class="btn-nav-b btn-b" onclick="login()">INGRESAR</button>
+                </div>
+                <div id="p-registro" class="card-botellas oculto-b">
+                    <div class="nombre-local">VENECIA</div>
+                    <div class="tit-b">REGISTRO</div>
+                    <label class="lbl-b">Mozo:</label><select id="mozo" class="sel-b"></select>
+                    <label class="lbl-b">Botella:</label><select id="botella" class="sel-b"></select>
+                    <label class="lbl-b">Cantidad:</label><input type="number" id="cant" class="inp-b" value="1">
+                    <label class="lbl-b">Fecha:</label><input type="date" id="fecha" class="inp-b">
+                    <label style="color: #d4af37;" class="lbl-b">Número de Comanda:</label>
+                    <input type="number" id="comanda" class="inp-b input-comanda-b" placeholder="Ej: 1540" inputmode="numeric">
+                    <button class="btn-add-b btn-b" onclick="guardar('NORMAL')">REGISTRAR VENTA</button>
+                    <button style="background:#5a32a3; margin-top:8px;" class="btn-b" onclick="guardar('RP')">CORTESÍA (RP)</button>
+                    <button style="background:#222; color:#ffeb3b; border:1px dashed #ffeb3b; margin-top:8px;" class="btn-b" onclick="guardar('FANTASMA')">BOT. FANTASMA</button>
+                    <button class="btn-nav-b btn-b" onclick="verResumen()">VER RESUMEN NUBE</button>
+                    <button style="background:#d4af37; color:black; margin-top:12px;" class="btn-b" onclick="irA('p-config')">⚙️ LISTAS</button>
+                </div>
+                <div id="p-resumen" class="card-botellas oculto-b">
+                    <div class="nombre-local">VENECIA</div>
+                    <div class="filtro-fecha-b">
+                        <label style="color:#d4af37; margin-top:0" class="lbl-b">Consultar fecha:</label>
+                        <input type="date" id="fecha-consulta" class="inp-b" onchange="cargarDatosResumen(this.value)">
+                    </div>
+                    <div id="total-general-box" class="total-general-b">Total General: 0 Botellas</div>
+                    <div id="cont-resumen">Cargando...</div>
+                    <button id="btn-volver-admin" class="btn-nav-b btn-b oculto-b" onclick="irA('p-registro')">VOLVER AL PANEL</button>
+                </div>
+                <div id="p-config" class="card-botellas oculto-b">
+                    <div class="nombre-local">VENECIA</div>
+                    <div class="tit-b">AJUSTES</div>
+                    <input type="text" id="nuevo-item" class="inp-b" placeholder="Nombre...">
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <button class="btn-add-b btn-b" style="margin:0" onclick="add('m')">+ MOZO</button>
+                        <button class="btn-add-b btn-b" style="margin:0; background:#007bff" onclick="add('b')">+ BOTELLA</button>
+                    </div>
+                    <ul id="l-mozos" style="list-style:none; padding:0"></ul>
+                    <ul id="l-bots" style="list-style:none; padding:0"></ul>
+                    <button class="btn-nav-b btn-b" onclick="irA('p-registro')">VOLVER</button>
+                </div>
+                <script>
+                    const fbB = { apiKey: "AIzaSyAKJ0vJGvnzIdkKIvD1w0NCStA19T-TzoM", authDomain: "venecia-control.firebaseapp.com", projectId: "venecia-control", storageBucket: "venecia-control.firebasestorage.app", messagingSenderId: "486778694402", appId: "1:486778694402:web:4276617163b85b5b7bf01b" };
+                    if (!firebase.apps.length) { firebase.initializeApp(fbB); }
+                    const dbB = firebase.firestore();
+                    let rolB = "";
+                    function login() {
+                        const p = document.getElementById('pass-input').value.trim().toUpperCase();
+                        if(p === 'VENECIA2026') { rolB="ADMIN"; irA('p-registro'); actualizarListas(); }
+                        else if(p === 'VENECIASOCIOS' || p === 'SOCIOSVENECIA') { rolB="SOCIO"; verResumen(); }
+                        else { alert("Error"); }
+                    }
+                    function irA(id) {
+                        document.querySelectorAll('.card-botellas').forEach(c => c.classList.add('oculto-b'));
+                        document.getElementById(id).classList.remove('oculto-b');
+                    }
+                    async function actualizarListas() {
+                        document.getElementById('fecha').valueAsDate = new Date();
+                        const docM = await dbB.collection("config").doc("mozos").get();
+                        const docB = await dbB.collection("config").doc("botellas").get();
+                        const mLista = docM.exists ? docM.data().lista : [];
+                        const bLista = docB.exists ? docB.data().lista : [];
+                        document.getElementById('mozo').innerHTML = mLista.map(m => `<option>${m}</option>`).join('');
+                        document.getElementById('botella').innerHTML = bLista.map(b => `<option>${b}</option>`).join('');
+                        document.getElementById('l-mozos').innerHTML = mLista.map(m => `<li style="display:flex; justify-content:space-between; padding:5px; background:#1a1a1a; margin-bottom:2px;">${m} <button class="btn-del-x-b" onclick="del('m','${m}')">X</button></li>`).join('');
+                        document.getElementById('l-bots').innerHTML = bLista.map(b => `<li style="display:flex; justify-content:space-between; padding:5px; background:#1a1a1a; margin-bottom:2px;">${b} <button class="btn-del-x-b" onclick="del('b','${b}')">X</button></li>`).join('');
+                    }
+                    async function add(tipo) {
+                        const id = tipo === 'm' ? 'mozos' : 'botellas';
+                        const val = document.getElementById('nuevo-item').value.trim();
+                        if(!val) return;
+                        const doc = await dbB.collection("config").doc(id).get();
+                        let lista = doc.exists ? doc.data().lista : [];
+                        lista.push(val);
+                        await dbB.collection("config").doc(id).set({lista});
+                        document.getElementById('nuevo-item').value = "";
+                        actualizarListas();
+                    }
+                    async function del(tipo, item) {
+                        const id = tipo === 'm' ? 'mozos' : 'botellas';
+                        const doc = await dbB.collection("config").doc(id).get();
+                        let lista = doc.data().lista.filter(i => i !== item);
+                        await dbB.collection("config").doc(id).set({lista});
+                        actualizarListas();
+                    }
+                    async function guardar(tipo) {
+                        const numComanda = document.getElementById('comanda').value;
+                        if(!numComanda) { alert("⚠️ Por favor ingresa el número de comanda."); return; }
+                        const data = { m: document.getElementById('mozo').value, b: document.getElementById('botella').value, c: parseInt(document.getElementById('cant').value), f: document.getElementById('fecha').value, co: parseInt(numComanda), tipo: tipo, t: Date.now() };
+                        try { await dbB.collection("ventas").add(data); alert("✅ Registro exitoso"); document.getElementById('comanda').value = ""; } catch (e) { alert("Error al guardar: " + e); }
+                    }
+                    function verResumen() {
+                        irA('p-resumen');
+                        const hoyB = new Date().toISOString().split('T')[0];
+                        document.getElementById('fecha-consulta').value = hoyB;
+                        cargarDatosResumen(hoyB);
+                        if(rolB === "ADMIN") document.getElementById('btn-volver-admin').classList.remove('oculto-b');
+                    }
+                    function cargarDatosResumen(fechaSel) {
+                        const cont = document.getElementById('cont-resumen');
+                        const generalBox = document.getElementById('total-general-box');
+                        dbB.collection("ventas").where("f", "==", fechaSel).onSnapshot(snap => {
+                            if(snap.empty) { cont.innerHTML = "<p style='text-align:center'>Sin registros.</p>"; generalBox.innerText = "Total General: 0 Botellas"; return; }
+                            let mozosData = {}; let granTotal = 0;
+                            snap.forEach(doc => {
+                                const v = doc.data();
+                                if(!mozosData[v.m]) mozosData[v.m] = { totalMozo: 0, NORMAL: {}, RP: {}, FANTASMA: {} };
+                                let cat = v.tipo || 'NORMAL';
+                                if(!mozosData[v.m][cat][v.b]) mozosData[v.m][cat][v.b] = {cant: 0, ids: []};
+                                mozosData[v.m][cat][v.b].cant += v.c;
+                                mozosData[v.m][cat][v.b].ids.push(doc.id);
+                                mozosData[v.m].totalMozo += v.c; granTotal += v.c;
+                            });
+                            generalBox.innerText = `Total General: ${granTotal} Botellas`;
+                            let html = "";
+                            for (let mozo in mozosData) {
+                                html += `<div class="mozo-container-b"><div class="mozo-header-b"><span class="mozo-nombre-b">${mozo}</span><span class="total-mozo-b">Total: ${mozosData[mozo].totalMozo}</span></div>`;
+                                ['NORMAL', 'RP', 'FANTASMA'].forEach(cat => {
+                                    let botellas = mozosData[mozo][cat];
+                                    if(Object.keys(botellas).length > 0) {
+                                        html += `<div class="cat-box-b"><div class="cat-titulo-b">${cat}</div>`;
+                                        for(let b in botellas) { html += `<div class="botella-item-b"><span>${b} <b>x${botellas[b].cant}</b></span>${rolB==='ADMIN' ? `<button class="btn-del-x-b" onclick="borrarLote('${botellas[b].ids.join(',')}')">X</button>` : ''}</div>`; }
+                                        html += `</div>`;
+                                    }
+                                });
+                                html += `</div>`;
+                            }
+                            cont.innerHTML = html;
+                        });
+                    }
+                    async function borrarLote(ids) { if(!confirm("¿Borrar?")) return; for(let id of ids.split(',')) await dbB.collection("ventas").doc(id).delete(); }
+                </script>
+            </div>
+        </section>
 
-    function agregar() {
-        const n = document.getElementById('nombreT').value;
-        if(n) db.ref('asistencias/personal').push({nombre: n}).then(() => document.getElementById('nombreT').value="");
-    }
+        <section id="piscinas" class="tab-content">
+            <div class="seccion-interna">
+                <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+                <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+                <style>
+                    .pisc-body { background: #0a0a0a; color: white; text-align: center; padding: 20px; margin: 0; }
+                    .pisc-h2 { color: #00d4ff; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; font-size: 1.5em; }
+                    .fecha-control-p { background: #111; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #222; max-width: 450px; margin-left: auto; margin-right: auto; }
+                    .lbl-p { display: block; font-size: 0.7em; color: #00d4ff; text-transform: uppercase; margin-bottom: 5px; font-weight: bold; }
+                    .inp-p { background: #000; color: white; border: 1px solid #333; padding: 10px; border-radius: 5px; width: 80%; text-align: center; font-size: 1em; }
+                    .selector-tipo-p { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; max-width: 450px; margin-left: auto; margin-right: auto; }
+                    .radio-tile-p { flex: 1; max-width: 120px; position: relative; border: 2px solid #333; border-radius: 10px; padding: 10px; cursor: pointer; transition: 0.3s; background: #111; }
+                    .radio-p { display: none; }
+                    .radio-p:checked + .radio-tile-p { border-color: #00d4ff; background: rgba(0,212,255,0.1); color: #00d4ff; }
+                    .radio-tile-p span { display: block; font-size: 0.8em; font-weight: bold; text-transform: uppercase; }
+                    .radio-tile-p small { display: block; font-size: 0.6em; color: #888; }
+                    .grid-mozos-p { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; max-width: 450px; margin-left: auto; margin-right: auto; }
+                    .btn-mozo-p { background: #1a1a1a; border: 1px solid #333; color: white; padding: 20px 10px; border-radius: 10px; font-weight: bold; font-size: 0.9em; text-transform: uppercase; position: relative; display: flex; justify-content: space-between; align-items: center; }
+                    .piscina-badge-p { color: #00d4ff; font-size: 1.1em; font-weight: 900; background: rgba(0,212,255,0.1); padding: 2px 8px; border-radius: 5px; border: 1px solid rgba(0,212,255,0.3); }
+                    .btn-del-config-p { position: absolute; top: -5px; right: -5px; background: #ff4444; color: white; border: none; font-size: 0.7em; width: 22px; height: 22px; border-radius: 50%; display: none; z-index: 5; }
+                    .edit-mode-p .btn-del-config-p { display: block; }
+                    #modal-resumen-p { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 3000; overflow-y: auto; padding-top: 20px; }
+                    .tabla-resumen-p { width: 95%; margin: 20px auto; border-collapse: collapse; }
+                    .tabla-resumen-p td { padding: 12px 5px; border-bottom: 1px solid #222; font-size: 0.9em; vertical-align: middle; }
+                    .btn-restar-media-p { background: #ff8800; color: white; border: none; padding: 6px; border-radius: 4px; font-size: 0.6em; font-weight: bold; margin-bottom: 3px; display: block; width: 100%; }
+                    .btn-restar-entera-p { background: #ff4444; color: white; border: none; padding: 6px; border-radius: 4px; font-size: 0.6em; font-weight: bold; display: block; width: 100%; }
+                    .btn-cerrar-p { background: #d4af37; color: black; border: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; text-transform: uppercase; margin-top: 25px; width: 85%; max-width: 400px; }
+                    .admin-section-p { margin-top: 40px; padding: 20px; border-top: 1px dashed #333; display: none; }
+                </style>
+                <div class="pisc-body">
+                    <h2 class="pisc-h2">🌊 REGISTRO PISCINAS</h2>
+                    <div class="fecha-control-p">
+                        <label class="lbl-p">Fecha de Trabajo:</label>
+                        <input type="date" id="fecha-registro-p" class="inp-p" onchange="actualizarContadoresVistaRapida()">
+                    </div>
+                    <div class="selector-tipo-p">
+                        <label>
+                            <input type="radio" name="tipo-p" value="1" class="radio-p" id="opt-media">
+                            <div class="radio-tile-p"><span>½ MEDIA</span><small>Suma 0.5</small></div>
+                        </label>
+                        <label>
+                            <input type="radio" name="tipo-p" value="2" checked class="radio-p" id="opt-entera">
+                            <div class="radio-tile-p"><span>1 ENTERA</span><small>Suma 1.0</small></div>
+                        </label>
+                    </div>
+                    <div class="grid-mozos-p" id="contenedor-mozos-p"></div>
+                    <button class="btn-cerrar-p" style="background: #444; color: white;" onclick="verResumenP()">Ver Resumen / Historial</button>
+                    <br>
+                    <button onclick="toggleEditP()" style="background:none; border:none; color:#444; font-size:0.7em; margin-top:10px;">[Configurar Mozos]</button>
+                    <div id="modal-resumen-p">
+                        <h3 style="color:#00d4ff">HISTORIAL Y CORRECCIÓN</h3>
+                        <div class="fecha-control-p" style="width: 85%; margin: auto;">
+                            <label class="lbl-p">Consultar Fecha:</label>
+                            <input type="date" id="fecha-consulta-p" class="inp-p" onchange="obtenerDatosResumenP()">
+                        </div>
+                        <table class="tabla-resumen-p"><tbody id="lista-resumen-p"></tbody></table>
+                        <button class="btn-cerrar-p" onclick="cerrarModalP()">Cerrar</button>
+                    </div>
+                    <div id="admin-panel-p" class="admin-section-p">
+                        <input type="text" id="nuevo-mozo-p" class="inp-p" placeholder="Nombre Mozo">
+                        <button onclick="agregarMozoP()" style="background:#28a745; color:white; border:none; padding:10px; border-radius:5px; margin-top:10px; font-weight:bold; width: 80%;">Añadir Mozo</button>
+                    </div>
+                </div>
+                <script>
+                    const fbP = { apiKey: "AIzaSyAKJ0vJGvnzIdkKIvD1w0NCStA19T-TzoM", authDomain: "venecia-control.firebaseapp.com", projectId: "venecia-control", storageBucket: "venecia-control.firebasestorage.app", messagingSenderId: "486778694402", appId: "1:486778694402:web:4276617163b85b5b7bf01b" };
+                    if (!firebase.apps.length) { firebase.initializeApp(fbP); }
+                    const dbP = firebase.firestore();
+                    const hoyP = new Date().toISOString().split('T')[0];
+                    document.getElementById('fecha-registro-p').value = hoyP;
+                    document.getElementById('fecha-consulta-p').value = hoyP;
+                    function cargarMozosP() { dbP.collection("config_mozos").orderBy("nombre").onSnapshot(snap => { renderizarBotonesP(snap); actualizarContadoresVistaRapida(); }); }
+                    function renderizarBotonesP(snap) {
+                        const contenedor = document.getElementById('contenedor-mozos-p');
+                        contenedor.innerHTML = "";
+                        snap.forEach(doc => {
+                            const data = doc.data();
+                            contenedor.innerHTML += `<div class="btn-mozo-p" onclick="registrarPiscinaP('${data.nombre}')"><button class="btn-del-config-p" onclick="event.stopPropagation(); borrarMozoP('${doc.id}')">X</button><span>${data.nombre}</span><span class="piscina-badge-p" id="badge-p-${data.nombre.replace(/\s+/g, '')}">0</span></div>`;
+                        });
+                    }
+                    function actualizarContadoresVistaRapida() {
+                        const fecha = document.getElementById('fecha-registro-p').value;
+                        dbP.collection("piscinas").where("f", "==", fecha).onSnapshot(snap => {
+                            let conteo = {}; snap.forEach(doc => { let d = doc.data(); conteo[d.m] = (conteo[d.m] || 0) + (d.v || 2); });
+                            document.querySelectorAll('.piscina-badge-p').forEach(b => b.innerText = "0");
+                            for (let m in conteo) { let el = document.getElementById("badge-p-" + m.replace(/\s+/g, '')); if(el) el.innerText = (conteo[m] / 2); }
+                        });
+                    }
+                    function registrarPiscinaP(nombre) {
+                        const f = document.getElementById('fecha-registro-p').value;
+                        const v = parseInt(document.querySelector('input[name="tipo-p"]:checked').value);
+                        dbP.collection("piscinas").add({ m: nombre.toUpperCase(), f: f, v: v, ts: firebase.firestore.FieldValue.serverTimestamp() });
+                    }
+                    function verResumenP() { document.getElementById('modal-resumen-p').style.display = "block"; obtenerDatosResumenP(); }
+                    function obtenerDatosResumenP() {
+                        const f = document.getElementById('fecha-consulta-p').value;
+                        const l = document.getElementById('lista-resumen-p');
+                        l.innerHTML = "<tr><td>Cargando...</td></tr>";
+                        dbP.collection("piscinas").where("f", "==", f).onSnapshot(snap => {
+                            let c = {}; snap.forEach(doc => { let d = doc.data(); c[d.m] = (c[d.m] || 0) + (d.v || 2); });
+                            l.innerHTML = ""; const ent = Object.entries(c);
+                            if(ent.length === 0) { l.innerHTML = "<tr><td colspan='3'>Sin registros</td></tr>"; return; }
+                            ent.sort((a,b) => b[1] - a[1]).forEach(i => {
+                                l.innerHTML += `<tr><td style="text-align:left; font-weight:bold;">${i[0]}</td><td style="color:#00d4ff; font-weight:bold;">${i[1] / 2} PIS.</td><td style="text-align:right;"><button class="btn-restar-media-p" onclick="borrarPorValorP('${i[0]}', 1, '${f}')">BORRAR ½</button><button class="btn-restar-entera-p" onclick="borrarPorValorP('${i[0]}', 2, '${f}')">BORRAR 1</button></td></tr>`;
+                            });
+                        });
+                    }
+                    function borrarPorValorP(n, v, f) {
+                        if(!confirm(`¿Borrar?`)) return;
+                        dbP.collection("piscinas").where("m", "==", n).where("f", "==", f).where("v", "==", v).limit(1).get().then(snap => {
+                            if (!snap.empty) { dbP.collection("piscinas").doc(snap.docs[0].id).delete(); }
+                        });
+                    }
+                    function agregarMozoP() { const n = document.getElementById('nuevo-mozo-p').value.trim().toUpperCase(); if(!n) return; dbP.collection("config_mozos").add({ nombre: n }).then(() => document.getElementById('nuevo-mozo-p').value = ""); }
+                    function borrarMozoP(id) { if(confirm("¿Eliminar?")) dbP.collection("config_mozos").doc(id).delete(); }
+                    function toggleEditP() { const p = document.getElementById('admin-panel-p'); const g = document.getElementById('contenedor-mozos-p'); p.style.display = (p.style.display === "none") ? "block" : "none"; g.classList.toggle('edit-mode-p'); }
+                    function cerrarModalP() { document.getElementById('modal-resumen-p').style.display = "none"; }
+                    cargarMozosP();
+                </script>
+            </div>
+        </section>
 
-    db.ref('asistencias/personal').on('value', s => {
-        const div = document.getElementById('lista'); div.innerHTML = "";
-        s.forEach(child => {
-            div.innerHTML += `<span class="badge bg-dark p-2">${child.val().nombre} <button class="btn-close btn-close-white" onclick="db.ref('asistencias/personal/${child.key}').remove()"></button></span>`;
-        });
-    });
+        <section id="cortesias" class="tab-content">
+            <div class="seccion-interna">
+                <style>
+                    body { font-family: 'Segoe UI', sans-serif; background-color: #0d0d0d; color: #e0e0e0; margin: 0; padding: 10px; touch-action: manipulation; }
+                    .container { max-width: 500px; margin: auto; background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #333; }
+                    h2 { text-align: center; color: #d4af37; text-transform: uppercase; font-size: 1.1em; margin-bottom: 15px; }
+                    .input-group { background: #222; padding: 10px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #d4af37; }
+                    label { display: block; font-size: 0.75em; color: #888; margin-bottom: 5px; text-transform: uppercase; }
+                    .time-panel { background: #111; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; }
+                    .time-display { color: #d4af37; font-size: 2.5em; font-weight: bold; font-family: monospace; margin-bottom: 15px; letter-spacing: 2px; }
+                    .control-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+                    .time-column { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+                    .col-label { font-size: 0.7em; color: #666; font-weight: bold; }
+                    .btn-unit { background: #333; color: white; border: 1px solid #444; width: 100%; padding: 15px 0; border-radius: 6px; font-size: 1.4em; font-weight: bold; }
+                    .btn-turbo { background: #222; color: #d4af37; border: 1px solid #333; width: 100%; padding: 10px 0; border-radius: 6px; font-size: 1em; }
+                    .ampm-switch { background: transparent; border: 1px solid #d4af37; color: #d4af37; padding: 8px 20px; border-radius: 20px; margin-top: 15px; font-weight: bold; }
+                    .grid-btn { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+                    button { border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+                    .btn-n { background: #333; color: white; padding: 12px 5px; }
+                    .btn-p { background: #252525; color: #d4af37; border: 1px solid #444; padding: 12px 5px; }
+                    .active-btn { background: #d4af37 !important; color: black !important; }
+                    input { width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #333; background: #111; color: white; box-sizing: border-box; margin-top: 5px; }
+                    .btn-reg { background: #d4af37; color: black; width: 100%; font-size: 1.1em; padding: 18px; margin-top: 15px; text-transform: uppercase; font-weight: bold; }
+                    .btn-view { background: transparent; color: #888; width: 100%; margin-top: 10px; padding: 10px; border: 1px solid #333; font-size: 0.8em; }
+                    .oculto { display: none; }
+                </style>
+                <div class="container">
+                    <div id="v-registro">
+                        <h2>Registro de Cortesía</h2>
+                        <div class="input-group">
+                            <label>Fecha y Hora</label>
+                            <input type="date" id="f" style="margin-bottom:15px;">
+                            <div class="time-panel">
+                                <div class="time-display"><span id="h-disp">12</span>:<span id="m-disp">00</span></div>
+                                <div class="control-row">
+                                    <div class="time-column">
+                                        <span class="col-label">HORAS</span>
+                                        <button class="btn-turbo" onmousedown="startTurbo('h', 1)" onmouseup="stopTurbo()" ontouchstart="startTurbo('h', 1)" ontouchend="stopTurbo()">▲▲</button>
+                                        <button class="btn-unit" onclick="modSimple('h', 1)">+</button>
+                                        <button class="btn-unit" onclick="modSimple('h', -1)">-</button>
+                                        <button class="btn-turbo" onmousedown="startTurbo('h', -1)" onmouseup="stopTurbo()" ontouchstart="startTurbo('h', -1)" ontouchend="stopTurbo()">▼▼</button>
+                                    </div>
+                                    <div class="time-column">
+                                        <span class="col-label">MINUTOS</span>
+                                        <button class="btn-turbo" onmousedown="startTurbo('m', 1)" onmouseup="stopTurbo()" ontouchstart="startTurbo('m', 1)" ontouchend="stopTurbo()">▲▲</button>
+                                        <button class="btn-unit" onclick="modSimple('m', 1)">+</button>
+                                        <button class="btn-unit" onclick="modSimple('m', -1)">-</button>
+                                        <button class="btn-turbo" onmousedown="startTurbo('m', -1)" onmouseup="stopTurbo()" ontouchstart="startTurbo('m', -1)" ontouchend="stopTurbo()">▼▼</button>
+                                    </div>
+                                </div>
+                                <button class="ampm-switch" id="ampm-btn" onclick="toggleAMPM()">AM</button>
+                            </div>
+                        </div>
 
-    const hoy = new Date().toLocaleDateString();
-    db.ref('asistencias/diarias').orderByChild('fecha').equalTo(hoy).on('value', s => {
-        const t = document.getElementById('tabla'); t.innerHTML = "";
-        s.forEach(child => {
-            const d = child.val();
-            t.innerHTML += `<tr><td>${d.nombre}</td><td>${d.hora}</td><td class="${d.tarde > 0 ? 'tardanza':'puntual'}">${d.tarde > 0 ? d.tarde+' min tarde':'Puntual'}</td></tr>`;
-        });
-    });
-</script>
+                        <div class="input-group">
+                            <label>1. ¿A quién?</label>
+                            <div class="grid-btn">
+                                <button class="btn-n" onclick="setN('Sr. Cristian', this)">Sr. Cristian</button>
+                                <button class="btn-n" onclick="setN('Sr. Luis', this)">Sr. Luis</button>
+                                <button class="btn-n" onclick="setN('Sr. Ignacio', this)">Sr. Ignacio</button>
+                                <button class="btn-n" onclick="setN('Sr. Orestes', this)">Sr. Orestes</button>
+                                <button class="btn-n" onclick="setN('DJ', this)">DJ</button>
+                                <button class="btn-n" style="background:#444" onclick="prepararTaxista(this)">TAXISTA</button>
+                            </div>
+                            <input type="text" id="nom" list="lista-taxistas" placeholder="Nombre o Placa...">
+                            <datalist id="lista-taxistas"></datalist>
+                        </div>
+
+                        <div class="input-group">
+                            <label>2. ¿Qué producto?</label>
+                            <div class="grid-btn">
+                                <button class="btn-p" onclick="setP('Agua', this)">Agua</button>
+                                <button class="btn-p" onclick="setP('Agua G.', this)">Agua G.</button>
+                                <button class="btn-p" onclick="setP('Coca Cola', this)">Coca Cola</button>
+                                <button class="btn-p" onclick="setP('Volt', this)">Volt</button>
+                                <button class="btn-p" onclick="setP('Red Bull', this)">Red Bull</button>
+                                <button class="btn-p" onclick="setP('Corona', this)">Corona</button>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <input type="text" id="pro" placeholder="Otro..." style="flex:2">
+                                <input type="number" id="can" value="1" style="flex:1">
+                            </div>
+                        </div>
+
+                        <button class="btn-reg" onclick="registrar()">Guardar Cortesía</button>
+                        <button class="btn-view" onclick="irA_Cort('v-resumen')">Ver Resumen Diario</button>
+                    </div>
+
+                    <div id="v-resumen" class="oculto">
+                        <h2 style="color:#d4af37">Resumen</h2>
+                        <input type="date" id="filtro" onchange="consultar()" style="margin-bottom:10px;">
+                        <div id="lista-totales" style="background:#222; padding:10px; border-radius:8px; border:1px solid #d4af37; margin-bottom:15px; font-size:0.9em;"></div>
+                        <table style="width:100%; border-collapse: collapse;">
+                            <tbody id="cuerpo-tabla"></tbody>
+                        </table>
+                        <button class="btn-reg" style="background:#333; color:white;" onclick="irA_Cort('v-registro')">Volver</button>
+                    </div>
+                </div>
+
+                <script>
+                    (function() {
+                        const firebaseConfig = {
+                            apiKey: "AIzaSyAKJ0vJGvnzIdkKIvD1w0NCStA19T-TzoM",
+                            authDomain: "venecia-control.firebaseapp.com",
+                            projectId: "venecia-control",
+                            storageBucket: "venecia-control.firebasestorage.app",
+                            messagingSenderId: "486778694402",
+                            appId: "1:486778694402:web:4276617163b85b5b7bf01b"
+                        };
+                        if (!firebase.apps.some(app => app.name === '[DEFAULT]')) { firebase.initializeApp(firebaseConfig); }
+                        const db = firebase.firestore();
+
+                        let h = 12, m = 0, isAM = true, tTimer;
+
+                        window.updateTimeUI = function() {
+                            document.getElementById('h-disp').innerText = h.toString().padStart(2, '0');
+                            document.getElementById('m-disp').innerText = m.toString().padStart(2, '0');
+                            document.getElementById('ampm-btn').innerText = isAM ? "AM" : "PM";
+                        };
+
+                        window.modSimple = function(tipo, val) {
+                            if(tipo === 'h') { h += val; if(h > 12) h = 1; if(h < 1) h = 12; }
+                            else { m += val; if(m > 59) m = 0; if(m < 0) m = 59; }
+                            updateTimeUI();
+                        };
+
+                        window.startTurbo = function(tipo, val) { tTimer = setInterval(() => modSimple(tipo, val), 100); };
+                        window.stopTurbo = function() { clearInterval(tTimer); };
+                        window.toggleAMPM = function() { isAM = !isAM; updateTimeUI(); };
+                        window.setN = function(v, btn) { document.getElementById('nom').value = v; reset('btn-n'); btn.classList.add('active-btn'); };
+                        window.setP = function(v, btn) { document.getElementById('pro').value = v; reset('btn-p'); btn.classList.add('active-btn'); };
+                        window.reset = function(c) { document.querySelectorAll('.'+c).forEach(b => b.classList.remove('active-btn')); };
+                        window.prepararTaxista = function(btn) { document.getElementById('nom').value = "Tax: "; document.getElementById('nom').focus(); reset('btn-n'); btn.classList.add('active-btn'); };
+
+                        window.actualizarListaTaxistas = function() {
+                            db.collection("cortesias").onSnapshot(snap => {
+                                const dataList = document.getElementById('lista-taxistas');
+                                let nombresUnicos = new Set();
+                                snap.forEach(doc => {
+                                    const nombre = doc.data().n;
+                                    if(nombre && nombre.startsWith("Tax: ")) nombresUnicos.add(nombre);
+                                });
+                                dataList.innerHTML = "";
+                                nombresUnicos.forEach(n => {
+                                    let opt = document.createElement('option');
+                                    opt.value = n;
+                                    dataList.appendChild(opt);
+                                });
+                            });
+                        };
+
+                        window.registrar = async function() {
+                            const nom = document.getElementById('nom').value;
+                            const pro = document.getElementById('pro').value;
+                            if(!nom || !pro) return alert("Completa nombre y producto");
+                            const data = {
+                                f: document.getElementById('f').value,
+                                h: `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${isAM ? 'AM':'PM'}`,
+                                n: nom, p: pro,
+                                c: parseInt(document.getElementById('can').value) || 1,
+                                t: Date.now()
+                            };
+                            try {
+                                await db.collection("cortesias").add(data);
+                                alert("¡Guardado!");
+                                document.getElementById('pro').value = "";
+                                reset('btn-p');
+                            } catch (e) { alert("Error de conexión"); }
+                        };
+
+                        window.irA_Cort = function(id) {
+                            document.getElementById('v-registro').classList.add('oculto');
+                            document.getElementById('v-resumen').classList.add('oculto');
+                            document.getElementById(id).classList.remove('oculto');
+                            if(id === 'v-resumen') { document.getElementById('filtro').value = document.getElementById('f').value; consultar(); }
+                        };
+
+                        window.consultar = function() {
+                            const f = document.getElementById('filtro').value;
+                            db.collection("cortesias").where("f", "==", f).onSnapshot(snap => {
+                                const tabla = document.getElementById('cuerpo-tabla');
+                                const totales = document.getElementById('lista-totales');
+                                tabla.innerHTML = ""; totales.innerHTML = "";
+                                let sumas = {}, lista = [];
+                                snap.forEach(doc => lista.push({id: doc.id, ...doc.data()}));
+                                lista.sort((a, b) => b.t - a.t);
+                                lista.forEach(d => {
+                                    tabla.innerHTML += `<tr><td>${d.h}</td><td><b>x${d.c}</b></td><td>${d.n}</td><td>${d.p}</td><td><button onclick="borrar('${d.id}')" style="background:#600; color:white; border-radius:4px; padding:4px 8px;">X</button></td></tr>`;
+                                    sumas[d.p] = (sumas[d.p] || 0) + (parseInt(d.c) || 0);
+                                });
+                                for(let p in sumas) totales.innerHTML += `<div>${p}: <b>x${sumas[p]}</b></div>`;
+                            });
+                        };
+
+                        window.borrar = async function(id) { if(confirm("¿Borrar registro?")) await db.collection("cortesias").doc(id).delete(); };
+
+                        document.getElementById('f').value = new Date().toISOString().split('T')[0];
+                        updateTimeUI();
+                        actualizarListaTaxistas();
+                    })();
+                </script>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // NAVEGACIÓN
+        function changeTab(event, sectionId) {
+            const sections = document.querySelectorAll('.tab-content');
+            sections.forEach(section => section.classList.remove('active'));
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+    </script>
+
 </body>
 </html>
